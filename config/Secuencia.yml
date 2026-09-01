@@ -1,0 +1,45 @@
+pagina de ingreso: http://184.107.46.188:9999/login.html
+# Credenciales en config/.env (USUARIO / PASSWORD)
+
+Descarga reporte Cuota_Protegida:
+                                  paso 1: Ingresa a la pagina web.
+                                  paso 2: se inicia sesion ingresando usuario y contraseña.
+                                  paso 3: Haz click en el boton "Entrar" ubicado en el login.
+                                  paso 4: clic en reporte y se despliega en el mismo varios reportes
+                                  paso 5: clic en reporte Gerencial
+                                  paso 6: se abrira una vista la idea es que se de clic y el link es http://184.107.46.188:9999/reporte-ventaspolizas.html
+                                  paso 7: clic en fecha inicial y se agregara la fecha que ese establezca por lo tanto debe haber un .env para esto, 
+                                            estructura del .env es la siguiente=
+                                                    fecha_inicial= YYYY-MM-DD, 
+                                                    fecha_final= YYYY-MM-DD, 
+                                                    en este momento es 2026-01-01, 2026-01-31
+                                  paso 8: clic en la fecha final 
+                                  paso 9: clic en Filtros Avanzados
+                                  paso 10: se despliega una lista, se debe dar en la palabra "aseguradora" para que se despliegue una lista desplegable
+                                  paso 11: se debe seleccionar "ZURICH COLOMBIA SEGURO S.A"
+                                  paso 12: clic en el boton buscar
+                                  paso 13: espera que se haga la busqueda siempre tiene una demora
+                                  paso 14: saldran botones para descargar el boton es "EXPORTAR EXCEL" y debe darse clic, espera a que se descargue el archivo
+                                  paso 15: se abrira una ventana de explorador de windows para guardar el archivo, se debe guardar en la carpeta de este proyecto que se llame download
+                                  paso 16: el reporte debe renombrarse con reporteIlio_fecha_inicial_fecha_final__timestap.xlsx
+
+Descarga reporte Rueda_Segura:
+                                  paso 6: se abrira una vista la idea es que se de clic y el link es http://184.107.46.188:9999/reporte-ventaspolizas.html
+                                  paso 7: clic en fecha inicial y se agregara la fecha que ese establezca por lo tanto debe haber un .env para esto, 
+                                            estructura del .env es la siguiente=
+                                                    fecha_inicial= YYYY-MM-DD, 
+                                                    fecha_final= YYYY-MM-DD, 
+                                                    en este momento es 2026-02-01, 2026-02-28
+                                  paso 8: clic en la fecha final 
+                                  paso 9: clic en Filtros Avanzados
+                                  paso 10: se despliega una lista, se debe dar en la palabra "aseguradora" para que se despliegue una lista desplegable
+                                  paso 11: se debe seleccionar "SBS SEGUROS COLOMBIA"
+                                  Paso 12: en el selector de entidades de facturacion se da clic en la palabra
+                                  paso 13: se despliega las opciones y se eligen VANTI S.A ESP, GAS NATURAL DEL ORIENTE, GAS NATURAL CUNDBIBOYACENSE, GAS NATURAL DEL CESAR
+                                  paso 14: en el selector producto se da clic en la palabra
+                                  paso 15: se despliega las opciones y se selecciona RUEDA SEGURO SBS
+                                  paso 16: clic en el boton buscar
+                                  paso 17: espera que se haga la busqueda siempre tiene una demora
+                                  paso 18: saldran botones para descargar el boton es "EXPORTAR EXCEL" y debe darse clic, espera a que se descargue el archivo
+                                  paso 19: se abrira una ventana de explorador de windows para guardar el archivo, se debe guardar en la carpeta de este proyecto que se llame download
+                                  paso 20: el reporte debe renombrarse con reporteIlio_fecha_inicial_fecha_final__timestap.xlsx

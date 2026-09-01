@@ -1,0 +1,281 @@
+import { useState } from "react";
+import { useFetch } from "./hooks/useFetch";
+import { obtenerDashboard } from "./services/comoVamos";
+import { fmtMoney, fmtNumero } from "./utils/formato";
+import StatTile from "./components/StatTile";
+import Podio from "./components/Podio";
+import TablaFacturacion from "./components/TablaFacturacion";
+import TablaConteo from "./components/TablaConteo";
+import TablaAsesores from "./components/TablaAsesores";
+import TablaDetalleAsesor from "./components/TablaDetalleAsesor";
+import MiResumenAsesor from "./components/MiResumenAsesor";
+import Tabs from "./components/Tabs";
+
+const PERIODO_STORAGE_KEY = "como-vamos-televentas:periodo";
+
+// Por el momento el tablero solo abre agosto y el mes en curso (septiembre)
+// -- ver conversación 2026-09-01. Debe calzar con PERIODOS_DISPONIBLES en
+// backend/app/routers/como_vamos.py (el backend rechaza cualquier otro).
+const PERIODOS = ["2026-08", "2026-09"];
+
+function periodoInicial() {
+  try {
+    const guardado = localStorage.getItem(PERIODO_STORAGE_KEY);
+    if (guardado && PERIODOS.includes(guardado)) return guardado;
+  } catch {
+    /* localStorage no disponible */
+  }
+  return PERIODOS[PERIODOS.length - 1];
+}
+
+const MESES_ES = [
+  "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
+  "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE",
+];
+
+function mesNombre(periodoIso) {
+  const [anio, mes] = periodoIso.split("-");
+  return `${MESES_ES[Number(mes) - 1]} ${anio}`;
+}
+
+export default function App() {
+  const [periodo, setPeriodo] = useState(periodoInicial());
+  const { loading, error, data, reintentar } = useFetch(
+    () => obtenerDashboard(periodo),
+    [periodo]
+  );
+
+  function cambiarPeriodo(nuevoPeriodo) {
+    setPeriodo(nuevoPeriodo);
+    try {
+      localStorage.setItem(PERIODO_STORAGE_KEY, nuevoPeriodo);
+    } catch {
+      /* localStorage no disponible, se pierde la preferencia al recargar */
+    }
+  }
+
+  return (
+    <div className="min-h-screen">
+      <header className="glass sticky top-0 z-10 px-4 md:px-6 py-2.5 border-x-0 border-t-0 rounded-none flex items-center justify-between gap-4 flex-wrap max-w-[1900px] mx-auto">
+        <div className="flex items-center gap-3 flex-wrap">
+          <h1 className="text-lg font-extrabold tracking-wide text-white">COMO VAMOS · TELEVENTAS</h1>
+          <p className="text-xs text-white/60">
+            {mesNombre(periodo)} · Seguros Vanti — Zurich
+          </p>
+          {data && (
+            <span className="inline-block text-[10px] font-semibold tracking-wide px-2 py-0.5 rounded-md border border-white/30 text-white/80">
+              {data.cerrado
+                ? "CERRADO POR AUDITORÍA"
+                : data.vista === "personal"
+                ? "TU OPERACIÓN — en vivo"
+                : "EN CURSO — datos en vivo de Ilio"}
+            </span>
+          )}
+        </div>
+        <div className="glass rounded-full p-1 flex gap-1">
+          {PERIODOS.map((p) => (
+            <button
+              key={p}
+              onClick={() => cambiarPeriodo(p)}
+              className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors duration-200 ${
+                periodo === p
+                  ? "bg-xuma-green-dark text-xuma-bg-dark"
+                  : "text-white/60 hover:text-white/90"
+              }`}
+            >
+              {mesNombre(p)}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      <main className="px-4 md:px-6 py-4 max-w-[1900px] mx-auto">
+        {loading && <div className="text-white/60 text-sm">Cargando dashboard…</div>}
+
+        {error && (
+          <div className="glass rounded-2xl px-4 py-4 text-sm text-white">
+            <p className="text-red-300 font-semibold mb-2">No se pudo cargar el dashboard.</p>
+            <p className="text-white/70 mb-3">{error}</p>
+            <button
+              onClick={reintentar}
+              className="px-3 py-1.5 rounded-lg bg-xuma-green-dark text-xuma-bg-dark text-xs font-bold"
+            >
+              Reintentar
+            </button>
+          </div>
+        )}
+
+        {data?.vista === "personal" && (
+          <MiResumenAsesor resumen={data.resumen} detalleEstado={data.detalle_estado} />
+        )}
+
+        {data?.vista === "equipo" && (
+          <>
+            {(data.avisos.sin_meta.length > 0 || data.avisos.sin_tarifa.length > 0) && (
+              <div className="glass rounded-xl px-3 py-2 mb-3 text-xs text-white/70 space-y-1">
+                {data.avisos.sin_meta.length > 0 && (
+                  <p>
+                    <span className="font-semibold text-white">Sin meta cargada:</span>{" "}
+                    {data.avisos.sin_meta.join(", ")}
+                  </p>
+                )}
+                {data.avisos.sin_tarifa.length > 0 && (
+                  <p>
+                    <span className="font-semibold text-white">Planes sin tarifa SERVI:</span>{" "}
+                    {data.avisos.sin_tarifa.join(", ")}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <h2 className="text-xs uppercase tracking-wide text-white/70 font-bold border-b-2 border-xuma-green-dark pb-1 mb-2">
+              Facturación canales y podio del mes — {mesNombre(data.periodo)}
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 mb-3">
+              <StatTile
+                label="Total facturación"
+                value={fmtMoney(data.kpis.total_facturacion)}
+                sub={`Corte al ${data.fecha_corte}`}
+              />
+              <StatTile
+                label="Total ventas"
+                value={fmtNumero(data.kpis.total_ventas)}
+                sub={`Corte al ${data.fecha_corte}`}
+              />
+              <Podio items={data.podio} />
+            </div>
+
+            <Tabs
+              tabs={[
+                {
+                  id: "resumen",
+                  label: "Resumen",
+                  content: (
+                    <div className="grid lg:grid-cols-3 gap-3">
+                      <div>
+                        <h3 className="text-xs uppercase tracking-wide text-white/70 font-bold border-b-2 border-xuma-green-dark pb-1 mb-2">
+                          Desempeño diario
+                        </h3>
+                        <TablaFacturacion
+                          filas={data.tabla_dias}
+                          colEtiqueta="fecha_venta"
+                          etiqueta="Fecha"
+                          campoCantidad="polizas"
+                        />
+                      </div>
+                      <div>
+                        <h3 className="text-xs uppercase tracking-wide text-white/70 font-bold border-b-2 border-xuma-green-dark pb-1 mb-2">
+                          Facturación por gasera
+                        </h3>
+                        <TablaFacturacion
+                          filas={data.tabla_gasera}
+                          colEtiqueta="entidad_facturacion"
+                          etiqueta="Gasera"
+                          campoCantidad="cantidad"
+                        />
+                        <h3 className="text-xs uppercase tracking-wide text-white/70 font-bold border-b-2 border-xuma-green-dark pb-1 mb-2 mt-3">
+                          Facturación por producto
+                        </h3>
+                        <TablaFacturacion
+                          filas={data.tabla_producto}
+                          colEtiqueta="producto"
+                          etiqueta="Producto"
+                          campoCantidad="cantidad"
+                        />
+                      </div>
+
+                      {data.rueda_segura.tabla_dias.length > 0 && (
+                        <div>
+                          <h3 className="text-xs uppercase tracking-wide text-white/70 font-bold border-b-2 border-xuma-green-dark pb-1 mb-2">
+                            Rueda Seguro — Auditoría (RS)
+                          </h3>
+                          <TablaConteo
+                            filas={data.rueda_segura.tabla_dias}
+                            colEtiqueta="fecha_venta"
+                            etiqueta="Fecha (RS)"
+                          />
+                          <h3 className="text-xs uppercase tracking-wide text-white/70 font-bold border-b-2 border-xuma-green-dark pb-1 mb-2 mt-3">
+                            Asesor (RS)
+                          </h3>
+                          <TablaConteo
+                            filas={data.rueda_segura.tabla_asesor}
+                            colEtiqueta="asesor"
+                            etiqueta="Asesor (RS)"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ),
+                },
+                {
+                  id: "asesor",
+                  label: "Como vamos por asesor",
+                  content: (
+                    <div>
+                      <h3 className="text-xs uppercase tracking-wide text-white/70 font-bold border-b-2 border-xuma-green-dark pb-1 mb-2">
+                        Como vamos por asesor
+                      </h3>
+                      <TablaAsesores filas={data.asesores} />
+                    </div>
+                  ),
+                },
+                {
+                  id: "detalle",
+                  label: "Detalle por vendedor",
+                  content: (
+                    <div className="grid lg:grid-cols-[minmax(0,1fr)_2fr] gap-3">
+                      <div>
+                        <h3 className="text-xs uppercase tracking-wide text-white/70 font-bold border-b-2 border-xuma-green-dark pb-1 mb-2">
+                          Resumen del equipo
+                        </h3>
+                        <div className="grid grid-cols-2 gap-2 mb-3">
+                          <StatTile label="Meta del mes" value={fmtNumero(data.resumen_equipo.meta_total)} />
+                          <StatTile
+                            label="Acumulado a la fecha"
+                            value={fmtNumero(data.resumen_equipo.acumulado_total)}
+                          />
+                          <StatTile
+                            label="Forecast de cierre"
+                            value={fmtNumero(data.resumen_equipo.forecast_total)}
+                          />
+                          <StatTile
+                            label="Días laborados"
+                            value={`${data.calendario.dias_laborados} / ${data.calendario.dias_colectivo}`}
+                            sub={`${data.calendario.dias_por_laborar} días por laborar`}
+                          />
+                        </div>
+
+                        <h3 className="text-xs uppercase tracking-wide text-white/70 font-bold border-b-2 border-xuma-green-dark pb-1 mb-2">
+                          Ventas por estado
+                        </h3>
+                        <TablaFacturacion
+                          filas={data.tabla_estados}
+                          colEtiqueta="nombre_estado"
+                          etiqueta="Estado"
+                          campoCantidad="cantidad"
+                        />
+                      </div>
+
+                      <div>
+                        <h3 className="text-xs uppercase tracking-wide text-white/70 font-bold border-b-2 border-xuma-green-dark pb-1 mb-2">
+                          Detalle por vendedor — pólizas por estado
+                        </h3>
+                        <TablaDetalleAsesor filas={data.detalle_asesor_estado} />
+                      </div>
+                    </div>
+                  ),
+                },
+              ]}
+            />
+          </>
+        )}
+      </main>
+
+      <footer className="px-4 md:px-6 py-2.5 text-[10px] text-white/40 border-t border-white/10 max-w-[1900px] mx-auto">
+        Fuente: ilio.v_cuota_protegida (DataCenter_Vanti), estrategia Televentas. El acumulado de
+        &quot;Como vamos por asesor&quot; incluye todos los estados (AUDITADA WEB, ALTA TRANSACCIONAL,
+        DIGITADA WEB, CANCELADA).
+      </footer>
+    </div>
+  );
+}

@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//tmp/**)",
+      "Bash(node -e ' *)",
+      "Bash(psql *)",
+      "Bash(\"/c/Program Files/PostgreSQL/17/bin/psql\" *)",
+      "PowerShell(psql *)",
+      "PowerShell(& \"C:\\Program Files\\PostgreSQL\\17\\bin\\psql.exe\" *)",
+      "Bash(cd /c/01_Repositorios/17_CRMXuma/backend && ls -la 2>&1 | grep -i venv *)",
+      "Read(//c/01_Repositorios/17_CRMXuma/backend/**)"
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+# Backend de Como Vamos Televentas (Xuma Enterprise). auth_dep.py/security
+# copiados de CRMXuma -- mismo JWT_SECRET para SSO.
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+psycopg2-binary==2.9.10
+pandas==2.2.3
+openpyxl==3.1.5
+PyJWT==2.10.1
+python-dotenv==1.0.1
+PyYAML==6.0.2
+holidays==0.63

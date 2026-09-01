@@ -1,0 +1,25 @@
+# Secretos -- nunca a git
+config/.env
+.env
+.env.local
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+backend/static/
+
+# Datos generados / entrada local -- no versionados
+out/
+input/
+logs/
+*.log
+
+# Editor / IDE
+.vscode/
+.claude/scheduled_tasks.lock

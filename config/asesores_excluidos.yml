@@ -1,0 +1,17 @@
+# Asesores que aparecen en ventas de Ilio o en actas pasadas pero que NO deben
+# recibir/considerar meta en el cálculo de Como Vamos, con el motivo por el
+# que se excluyen. Edítalo cada corte según indique el coordinador comercial.
+#
+# El nombre debe coincidir (normalizado: mayúsculas, sin tildes, espacios
+# colapsados -- ver src/metas_repo.normalizar_nombre) con como aparece en
+# ilio.v_cuota_protegida o en como_vamos_televentas.metas.
+
+excluidos:
+  - nombre: "HANSEL ALFONSO DIAGO HERNANDEZ"
+    motivo: "No aplica meta"
+  - nombre: "KATHERIN THOMAS PARRA"
+    motivo: "No aplica meta"
+  - nombre: "CINDY JOHANA PALMERA TORRES"
+    motivo: "Ya no trabaja aquí"
+  - nombre: "ROSALINDA RIVERA SENIOR"
+    motivo: "Ya no trabaja aquí"

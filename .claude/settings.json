@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -NoProfile -Command \"Get-ChildItem -Path 'c:\\\\01_Repositorios\\\\05_AutoConciliacion' -Recurse -File -ErrorAction SilentlyContinue | Select-Object FullName, CreationTime, LastWriteTime | Sort-Object CreationTime | Format-Table -AutoSize | Out-String -Width 300\")",
+      "Bash(powershell -NoProfile -Command \"Get-ChildItem -Recurse -File 'c:\\\\01_Repositorios\\\\13_Presentaciones' | Select-Object FullName, CreationTime, LastWriteTime | Sort-Object CreationTime | Format-Table -AutoSize | Out-String -Width 300\")",
+      "Bash(powershell -NoProfile -Command \"Get-ChildItem -Directory 'c:\\\\01_Repositorios\\\\13_Presentaciones' | Select-Object Name; Write-Output '---dash---'; Get-ChildItem -Directory 'c:\\\\01_Repositorios\\\\13_Presentaciones\\\\dash' | Select-Object Name\")"
+    ]
+  }
+}
