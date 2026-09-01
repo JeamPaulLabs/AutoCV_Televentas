@@ -39,6 +39,8 @@ def get_current_user(session_token: Optional[str] = Cookie(default=None, alias=C
 
 
 def es_supervisor_televentas(current: dict) -> bool:
-    """Solo quien tiene admin_alcance='televentas' (hoy: Martha) ve el
-    tablero completo del equipo, con facturación incluida."""
-    return current.get("admin_alcance") == "televentas"
+    """Ve el tablero completo del equipo (con facturación incluida) quien
+    tiene admin_alcance='televentas' (hoy: Martha) o es superadmin del
+    portal (acceso total, igual que en el resto del CRM -- ver
+    _apps_permitidas en CRMXuma/backend/app/routers/auth.py)."""
+    return current.get("admin_alcance") == "televentas" or current.get("rol") == "superadmin"
