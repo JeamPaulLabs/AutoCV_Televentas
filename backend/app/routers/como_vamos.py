@@ -132,12 +132,21 @@ def dashboard(
     tabla_rs_asesor = resumen_rs_por_asesor(df_rs) if not df_rs.empty else df_rs
 
     corte_ilio = ultima_actualizacion_ilio()
+    # ilio.ejecuciones.finalizado_en es timestamp SIN zona horaria pero
+    # guardado en UTC (reloj del servidor) -- si se manda tal cual, el
+    # navegador lo interpreta como hora LOCAL del que mira la pantalla y
+    # muestra una hora que no es (ej. 21:46 UTC se veía como "9:46 p.m."
+    # en vez de convertir a 4:46 p.m. Colombia). Se marca explícito como
+    # UTC ("Z") para que el navegador sí haga la conversión correcta.
+    actualizado_en = (
+        corte_ilio.replace(tzinfo=dt.timezone.utc).isoformat() if corte_ilio else None
+    )
 
     base = {
         "periodo": periodo_d.isoformat(),
         "fecha_corte": cal.fecha_corte.isoformat(),
         "cerrado": cerrado,
-        "actualizado_en": corte_ilio.isoformat() if corte_ilio else None,
+        "actualizado_en": actualizado_en,
         "calendario": {
             "dias_colectivo": cal.dias_colectivo,
             "dias_laborados": cal.dias_laborados,
