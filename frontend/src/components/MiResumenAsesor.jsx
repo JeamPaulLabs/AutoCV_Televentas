@@ -183,7 +183,7 @@ export default function MiResumenAsesor({ resumen, detalleEstado, detalleDiaDia 
           onClick={() => setPopup(null)}
         >
           <div
-            className="glass rounded-2xl px-5 py-4 max-w-md w-full max-h-[70vh] overflow-auto"
+            className="modal-solid rounded-2xl px-5 py-4 max-w-md w-full max-h-[70vh] overflow-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-3">

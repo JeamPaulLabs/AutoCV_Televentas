@@ -71,6 +71,16 @@ body {
   }
 }
 
+/* Popups/modales: mismo problema que el header -- .glass (6%) encima de un
+   overlay oscuro se ve casi transparente y el contenido de atrás se cuela.
+   Reusa la misma opacidad sólida del header. */
+.modal-solid {
+  background: rgb(13 16 36 / 0.96);
+  border: 1px solid rgb(255 255 255 / 0.14);
+  border-top-color: rgb(255 255 255 / 0.22);
+  box-shadow: 0 20px 50px rgb(0 0 0 / 0.5);
+}
+
 /* Cabecera de tablas: antes bg-xuma-blue/90 de pared a pared -- superficie
    neutra + subrayado verde, menos "muro azul" y mejor contraste de texto. */
 .tabla-header {
