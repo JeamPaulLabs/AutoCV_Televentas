@@ -50,15 +50,25 @@ function agruparPorDia(detalle) {
   return [...grupos.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1));
 }
 
+// Orden fijo de lectura del ciclo de vida de una venta -- primero recién
+// digitada, luego lo que ya maduró, cancelada al final. Cualquier estado
+// que no esté aquí (no debería pasar) cae después, en el orden que salga.
+const ORDEN_ESTADO = ["DIGITADA WEB", "AUDITADA WEB", "ALTA TRANSACCIONAL", "CANCELADA"];
+
 /** Cuántas cuentas de ese día caen en cada estado -- para los globitos
- * clicables (ej. "2 ALTA TRANSACCIONAL", "1 CANCELADA"). */
+ * clicables (ej. "2 ALTA TRANSACCIONAL", "1 CANCELADA"), siempre en el
+ * mismo orden para que se puedan comparar los días de un vistazo. */
 function contarPorEstado(ventas) {
   const conteo = new Map();
   for (const v of ventas) {
     const estado = v.estado || "SIN ESTADO";
     conteo.set(estado, (conteo.get(estado) || 0) + 1);
   }
-  return [...conteo.entries()];
+  return [...conteo.entries()].sort((a, b) => {
+    const ia = ORDEN_ESTADO.indexOf(a[0]);
+    const ib = ORDEN_ESTADO.indexOf(b[0]);
+    return (ia === -1 ? ORDEN_ESTADO.length : ia) - (ib === -1 ? ORDEN_ESTADO.length : ib);
+  });
 }
 
 export default function MiResumenAsesor({ resumen, detalleEstado, detalleDiaDia }) {
@@ -199,7 +209,7 @@ export default function MiResumenAsesor({ resumen, detalleEstado, detalleDiaDia 
                             grupos: [[fecha, ventas.filter((v) => (v.estado || "SIN ESTADO") === estado)]],
                           })
                         }
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-semibold cursor-pointer hover:brightness-125 transition ${BADGE_ESTADO[estado] || BADGE_ESTADO_DEFAULT}`}
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-semibold cursor-pointer hover:brightness-125 transition text-center min-w-[92px] ${BADGE_ESTADO[estado] || BADGE_ESTADO_DEFAULT}`}
                       >
                         {cantidad} {estado}
                       </button>
