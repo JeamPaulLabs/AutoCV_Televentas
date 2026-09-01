@@ -35,6 +35,20 @@ def _colectivo_de(periodo: dt.date) -> str:
     return f"{MESES_ES[periodo.month]} {periodo.year}"
 
 
+def ultima_actualizacion_ilio() -> dt.datetime | None:
+    """Hora del último corrido exitoso del sync de Ilio para el mes en curso
+    (ilio.ejecuciones, job_type='mes_corriente') -- para mostrarle al asesor
+    qué tan fresca es la data que está viendo."""
+    with get_conexion() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT MAX(finalizado_en) FROM ilio.ejecuciones
+            WHERE job_type = 'mes_corriente' AND estado = 'ok'
+        """)
+        row = cur.fetchone()
+        return row[0] if row else None
+
+
 def periodo_esta_cerrado(periodo: dt.date) -> dict | None:
     """Devuelve la fila de cierres_mes si el periodo ya fue cerrado por auditoría, si no None."""
     with get_conexion() as conn:
@@ -71,7 +85,7 @@ def leer_televentas(periodo: dt.date, fecha_corte: dt.date | None = None) -> pd.
     query = """
         SELECT id_poliza, fecha_venta, fecha_digitacion, asesor, supervisor,
                estrategia, producto, plan, colectivo, entidad_facturacion,
-               tarifa, nombre_estado
+               tarifa, nombre_estado, numero_contrato
         FROM ilio.v_cuota_protegida
         WHERE estrategia = 'Televentas' AND colectivo = %(colectivo)s
           AND supervisor = %(supervisor)s

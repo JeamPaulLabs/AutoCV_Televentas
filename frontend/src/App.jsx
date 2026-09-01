@@ -38,6 +38,14 @@ function mesNombre(periodoIso) {
   return `${MESES_ES[Number(mes) - 1]} ${anio}`;
 }
 
+function fmtActualizado(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  const fecha = d.toLocaleDateString("es-CO", { day: "2-digit", month: "short" });
+  const hora = d.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" });
+  return `${fecha}, ${hora}`;
+}
+
 export default function App() {
   const [periodo, setPeriodo] = useState(periodoInicial());
   const { loading, error, data, reintentar } = useFetch(
@@ -69,6 +77,11 @@ export default function App() {
                 : data.vista === "personal"
                 ? "TU OPERACIÓN — en vivo"
                 : "EN CURSO — datos en vivo de Ilio"}
+            </span>
+          )}
+          {data?.actualizado_en && (
+            <span className="text-[10px] text-white/50">
+              Ilio actualizado: {fmtActualizado(data.actualizado_en)}
             </span>
           )}
         </div>
@@ -106,7 +119,11 @@ export default function App() {
         )}
 
         {data?.vista === "personal" && (
-          <MiResumenAsesor resumen={data.resumen} detalleEstado={data.detalle_estado} />
+          <MiResumenAsesor
+            resumen={data.resumen}
+            detalleEstado={data.detalle_estado}
+            detalleDiaDia={data.detalle_dia_dia}
+          />
         )}
 
         {data?.vista === "equipo" && (
@@ -272,9 +289,7 @@ export default function App() {
       </main>
 
       <footer className="px-4 md:px-6 py-2.5 text-[10px] text-white/40 border-t border-white/10 max-w-[1900px] mx-auto">
-        Fuente: ilio.v_cuota_protegida (DataCenter_Vanti), estrategia Televentas. El acumulado de
-        &quot;Como vamos por asesor&quot; incluye todos los estados (AUDITADA WEB, ALTA TRANSACCIONAL,
-        DIGITADA WEB, CANCELADA).
+        Fuente: Ilio, estrategia Televentas · incluye Auditada Web, Alta Transaccional, Digitada Web y Cancelada.
       </footer>
     </div>
   );

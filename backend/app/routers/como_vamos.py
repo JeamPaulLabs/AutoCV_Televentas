@@ -17,7 +17,12 @@ from src.calculo import calcular_proyeccion
 from src.calendario import Calendario
 from src.db import get_conexion
 from src.exclusiones import cargar_excluidos
-from src.ilio_repo import leer_rueda_segura, leer_televentas, periodo_esta_cerrado
+from src.ilio_repo import (
+    leer_rueda_segura,
+    leer_televentas,
+    periodo_esta_cerrado,
+    ultima_actualizacion_ilio,
+)
 from src.metas_repo import asesores_sin_meta, leer_metas
 from src.pivote import (
     kpis_facturacion,
@@ -126,10 +131,13 @@ def dashboard(
     ) if not df_rs.empty else df_rs
     tabla_rs_asesor = resumen_rs_por_asesor(df_rs) if not df_rs.empty else df_rs
 
+    corte_ilio = ultima_actualizacion_ilio()
+
     base = {
         "periodo": periodo_d.isoformat(),
         "fecha_corte": cal.fecha_corte.isoformat(),
         "cerrado": cerrado,
+        "actualizado_en": corte_ilio.isoformat() if corte_ilio else None,
         "calendario": {
             "dias_colectivo": cal.dias_colectivo,
             "dias_laborados": cal.dias_laborados,
@@ -180,12 +188,28 @@ def dashboard(
     resumen = df_records(mi_fila)[0]
     resumen.pop("base_pago_proyectada", None)
 
+    # Día a día: cada venta propia con su contrato y estado -- lo que el
+    # asesor pidió para poder revisar puntualmente cada cuenta, no solo el
+    # acumulado. Sin tarifa/facturación (ver arriba).
+    mask_ventas_mias = df_ventas["asesor"].map(_norm_nombre) == mi_alias_norm
+    mis_ventas = df_ventas[mask_ventas_mias].sort_values("fecha_venta", ascending=False)
+    detalle_dia_dia = [
+        {
+            "fecha_venta": r.fecha_venta.isoformat() if hasattr(r.fecha_venta, "isoformat") else str(r.fecha_venta),
+            "contrato": getattr(r, "numero_contrato", None),
+            "producto": getattr(r, "producto", None),
+            "estado": getattr(r, "nombre_estado", None),
+        }
+        for r in mis_ventas.itertuples(index=False)
+    ]
+
     return {
         **base,
         "vista": "personal",
         "disponible": True,
         "resumen": resumen,
         "detalle_estado": df_records(mi_detalle)[0] if not mi_detalle.empty else None,
+        "detalle_dia_dia": detalle_dia_dia,
     }
 
 
