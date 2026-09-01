@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { useFetch } from "./hooks/useFetch";
-import { obtenerDashboard } from "./services/comoVamos";
+import { useDashboardCache } from "./hooks/useDashboardCache";
 import { fmtMoney, fmtNumero } from "./utils/formato";
 import StatTile from "./components/StatTile";
 import Podio from "./components/Podio";
@@ -48,10 +47,7 @@ function fmtActualizado(iso) {
 
 export default function App() {
   const [periodo, setPeriodo] = useState(periodoInicial());
-  const { loading, error, data, reintentar } = useFetch(
-    () => obtenerDashboard(periodo),
-    [periodo]
-  );
+  const { loading, error, data, reintentar } = useDashboardCache(periodo);
 
   function cambiarPeriodo(nuevoPeriodo) {
     setPeriodo(nuevoPeriodo);
