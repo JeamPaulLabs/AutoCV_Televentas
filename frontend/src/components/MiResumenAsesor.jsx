@@ -18,12 +18,12 @@ function semaforo(pctCumpl, pctCumplIdeal) {
  * facturación ni valores en pesos -- ver backend/app/routers/como_vamos.py
  * (rama "vista personal" del endpoint /dashboard). */
 const BADGE_ESTADO = {
-  "AUDITADA WEB": "bg-emerald-700 text-white",
-  "ALTA TRANSACCIONAL": "bg-emerald-700 text-white",
-  "DIGITADA WEB": "bg-amber-600 text-white",
-  "CANCELADA": "bg-red-700 text-white",
+  "AUDITADA WEB": "bg-emerald-900 text-emerald-200",
+  "ALTA TRANSACCIONAL": "bg-emerald-900 text-emerald-200",
+  "DIGITADA WEB": "bg-amber-900 text-amber-200",
+  "CANCELADA": "bg-red-900 text-red-200",
 };
-const BADGE_ESTADO_DEFAULT = "bg-white/20 text-white";
+const BADGE_ESTADO_DEFAULT = "bg-white/15 text-white/80";
 
 function fmtFecha(iso) {
   if (!iso) return "—";
