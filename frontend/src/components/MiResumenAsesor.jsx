@@ -26,8 +26,14 @@ const BADGE_ESTADO = {
 
 function fmtFecha(iso) {
   if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
+  // "2026-09-01" es una fecha sin hora -- new Date(iso) la lee como
+  // medianoche UTC, y en Colombia (UTC-5) eso cae un día antes al mostrarla
+  // (1 sept se veía como 31 ago). Se parsean los componentes a mano para
+  // construir una fecha LOCAL, sin pasar por UTC.
+  const [soloFecha] = iso.split("T");
+  const [anio, mes, dia] = soloFecha.split("-").map(Number);
+  if (!anio || !mes || !dia) return iso;
+  const d = new Date(anio, mes - 1, dia);
   return d.toLocaleDateString("es-CO", { day: "2-digit", month: "short" });
 }
 
