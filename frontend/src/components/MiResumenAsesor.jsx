@@ -49,8 +49,19 @@ function agruparPorDia(detalle) {
   return [...grupos.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1));
 }
 
+/** Cuántas cuentas de ese día caen en cada estado -- para los globitos
+ * clicables (ej. "2 ALTA TRANSACCIONAL", "1 CANCELADA"). */
+function contarPorEstado(ventas) {
+  const conteo = new Map();
+  for (const v of ventas) {
+    const estado = v.estado || "SIN ESTADO";
+    conteo.set(estado, (conteo.get(estado) || 0) + 1);
+  }
+  return [...conteo.entries()];
+}
+
 export default function MiResumenAsesor({ resumen, detalleEstado, detalleDiaDia }) {
-  const [diaAbierto, setDiaAbierto] = useState(null);
+  const [popup, setPopup] = useState(null);
 
   if (!resumen) {
     return (
@@ -127,48 +138,66 @@ export default function MiResumenAsesor({ resumen, detalleEstado, detalleDiaDia 
             Día a día del mes
           </div>
           <div className="space-y-1.5 max-h-[calc(100vh-220px)] overflow-auto pr-1">
-            {agruparPorDia(detalleDiaDia).map(([fecha, ventas]) => {
-              const abierto = diaAbierto === fecha;
-              return (
-                <div key={fecha} className="rounded-lg overflow-hidden border border-white/10">
-                  <button
-                    type="button"
-                    onClick={() => setDiaAbierto(abierto ? null : fecha)}
-                    className="w-full flex items-center justify-between px-3 py-2 text-xs bg-white/5 hover:bg-white/10 transition-colors"
-                  >
-                    <span className="font-semibold text-white">{fmtFecha(fecha)}</span>
-                    <span className="flex items-center gap-2 text-white/70">
-                      {ventas.length} cuenta{ventas.length === 1 ? "" : "s"} gestionada{ventas.length === 1 ? "" : "s"}
-                      <span className={`transition-transform ${abierto ? "rotate-180" : ""}`}>⌄</span>
-                    </span>
-                  </button>
-                  {abierto && (
-                    <table className="w-full border-collapse text-xs">
-                      <thead>
-                        <tr className="tabla-header text-white text-left">
-                          <th className="px-2.5 py-1.5 font-semibold">Contrato</th>
-                          <th className="px-2.5 py-1.5 font-semibold">Producto</th>
-                          <th className="px-2.5 py-1.5 font-semibold">Estado</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {ventas.map((v, i) => (
-                          <tr key={`${v.contrato}-${i}`} className="border-t border-white/10 text-white/85">
-                            <td className="px-2.5 py-1 tabular-nums">{v.contrato || "—"}</td>
-                            <td className="px-2.5 py-1">{v.producto || "—"}</td>
-                            <td className="px-2.5 py-1">
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${BADGE_ESTADO[v.estado] || "bg-white/10 text-white/70"}`}>
-                                {v.estado || "—"}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
+            {agruparPorDia(detalleDiaDia).map(([fecha, ventas]) => (
+              <div key={fecha} className="rounded-lg border border-white/10 px-3 py-2 flex items-center justify-between gap-2 flex-wrap">
+                <span className="font-semibold text-white text-xs shrink-0">{fmtFecha(fecha)}</span>
+                <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                  {contarPorEstado(ventas).map(([estado, cantidad]) => (
+                    <button
+                      key={estado}
+                      type="button"
+                      onClick={() =>
+                        setPopup({
+                          fecha,
+                          estado,
+                          ventas: ventas.filter((v) => (v.estado || "SIN ESTADO") === estado),
+                        })
+                      }
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-semibold cursor-pointer hover:brightness-125 transition ${BADGE_ESTADO[estado] || "bg-white/10 text-white/70"}`}
+                    >
+                      {cantidad} {estado}
+                    </button>
+                  ))}
                 </div>
-              );
-            })}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {popup && (
+        <div
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4"
+          onClick={() => setPopup(null)}
+        >
+          <div
+            className="glass rounded-2xl px-5 py-4 max-w-md w-full max-h-[70vh] overflow-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <div className="text-xs text-white/60">{fmtFecha(popup.fecha)}</div>
+                <div className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${BADGE_ESTADO[popup.estado] || "bg-white/10 text-white/70"}`}>
+                  {popup.estado}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPopup(null)}
+                className="w-7 h-7 rounded-lg border border-white/20 text-white/70 hover:bg-white/10 transition-colors"
+                aria-label="Cerrar"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="space-y-2">
+              {popup.ventas.map((v, i) => (
+                <div key={`${v.contrato}-${i}`} className="flex items-center justify-between text-xs border-t border-white/10 pt-2 first:border-t-0 first:pt-0">
+                  <span className="text-white font-semibold tabular-nums">{v.contrato || "—"}</span>
+                  <span className="text-white/60">{v.producto || "—"}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
