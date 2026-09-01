@@ -18,11 +18,12 @@ function semaforo(pctCumpl, pctCumplIdeal) {
  * facturación ni valores en pesos -- ver backend/app/routers/como_vamos.py
  * (rama "vista personal" del endpoint /dashboard). */
 const BADGE_ESTADO = {
-  "AUDITADA WEB": "bg-xuma-green-dark/20 text-xuma-green-light",
-  "ALTA TRANSACCIONAL": "bg-xuma-green-dark/20 text-xuma-green-light",
-  "DIGITADA WEB": "bg-amber-500/20 text-amber-300",
-  "CANCELADA": "bg-red-500/20 text-red-300",
+  "AUDITADA WEB": "bg-emerald-700 text-white",
+  "ALTA TRANSACCIONAL": "bg-emerald-700 text-white",
+  "DIGITADA WEB": "bg-amber-600 text-white",
+  "CANCELADA": "bg-red-700 text-white",
 };
+const BADGE_ESTADO_DEFAULT = "bg-white/20 text-white";
 
 function fmtFecha(iso) {
   if (!iso) return "—";
@@ -63,6 +64,7 @@ function contarPorEstado(ventas) {
 export default function MiResumenAsesor({ resumen, detalleEstado, detalleDiaDia }) {
   const detalle = detalleDiaDia || [];
   const [popup, setPopup] = useState(null);
+  const [filtroEstado, setFiltroEstado] = useState(null);
 
   if (!resumen) {
     return (
@@ -119,18 +121,31 @@ export default function MiResumenAsesor({ resumen, detalleEstado, detalleDiaDia 
               {estados.map(([estado, cantidad]) => {
                 const pct = total ? (cantidad / total) * 100 : 0;
                 const deEsteEstado = detalle.filter((v) => (v.estado || "SIN ESTADO") === estado);
+                const activo = filtroEstado === estado;
                 return (
-                  <div key={estado} className="flex items-center gap-3">
-                    <div className="w-40 shrink-0 text-xs text-white/75 truncate" title={estado}>{estado}</div>
+                  <div
+                    key={estado}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setFiltroEstado(activo ? null : estado)}
+                    onKeyDown={(e) => e.key === "Enter" && setFiltroEstado(activo ? null : estado)}
+                    className={`flex items-center gap-3 rounded-lg px-2 py-1 -mx-2 cursor-pointer transition-colors ${activo ? "bg-white/10" : "hover:bg-white/5"}`}
+                    title="Clic para filtrar el día a día por este estado"
+                  >
+                    <div className={`w-40 shrink-0 text-xs truncate ${activo ? "text-white font-semibold" : "text-white/75"}`} title={estado}>
+                      {estado}
+                    </div>
                     <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
                       <div className="h-full rounded-full bg-xuma-green-dark" style={{ width: `${pct}%` }} />
                     </div>
                     <button
                       type="button"
-                      onClick={() =>
-                        deEsteEstado.length > 0 &&
-                        setPopup({ titulo: estado, estado, grupos: agruparPorDia(deEsteEstado) })
-                      }
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (deEsteEstado.length > 0) {
+                          setPopup({ titulo: `${estado} · total del mes`, estado, grupos: agruparPorDia(deEsteEstado) });
+                        }
+                      }}
                       disabled={deEsteEstado.length === 0}
                       className="w-8 shrink-0 text-right text-xs font-bold text-white tabular-nums hover:text-xuma-green-light transition-colors disabled:hover:text-white disabled:cursor-default"
                     >
@@ -146,33 +161,52 @@ export default function MiResumenAsesor({ resumen, detalleEstado, detalleDiaDia 
 
       {detalleDiaDia && detalleDiaDia.length > 0 && (
         <div className="glass rounded-2xl px-5 py-4 lg:sticky lg:top-[76px]">
-          <div className="text-xs uppercase tracking-wide text-white/60 font-semibold mb-3">
-            Día a día del mes
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-xs uppercase tracking-wide text-white/60 font-semibold">
+              Día a día del mes
+            </div>
+            {filtroEstado && (
+              <button
+                type="button"
+                onClick={() => setFiltroEstado(null)}
+                className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold ${BADGE_ESTADO[filtroEstado] || BADGE_ESTADO_DEFAULT}`}
+              >
+                {filtroEstado} ✕
+              </button>
+            )}
           </div>
           <div className="space-y-1.5 max-h-[calc(100vh-220px)] overflow-auto pr-1">
-            {agruparPorDia(detalle).map(([fecha, ventas]) => (
-              <div key={fecha} className="rounded-lg border border-white/10 px-3 py-2 flex items-center justify-between gap-2 flex-wrap">
-                <span className="font-semibold text-white text-xs shrink-0">{fmtFecha(fecha)}</span>
-                <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                  {contarPorEstado(ventas).map(([estado, cantidad]) => (
-                    <button
-                      key={estado}
-                      type="button"
-                      onClick={() =>
-                        setPopup({
-                          titulo: fmtFecha(fecha),
-                          estado,
-                          grupos: [[fecha, ventas.filter((v) => (v.estado || "SIN ESTADO") === estado)]],
-                        })
-                      }
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-semibold cursor-pointer hover:brightness-125 transition ${BADGE_ESTADO[estado] || "bg-white/10 text-white/70"}`}
-                    >
-                      {cantidad} {estado}
-                    </button>
-                  ))}
+            {agruparPorDia(detalle)
+              .map(([fecha, ventas]) => [
+                fecha,
+                filtroEstado ? ventas.filter((v) => (v.estado || "SIN ESTADO") === filtroEstado) : ventas,
+              ])
+              .filter(([, ventas]) => ventas.length > 0)
+              .map(([fecha, ventas]) => (
+                <div key={fecha} className="rounded-lg border border-white/10 px-3 py-2 flex items-center justify-between gap-2 flex-wrap">
+                  <span className="font-semibold text-white text-xs shrink-0">
+                    {fmtFecha(fecha)} <span className="text-white/40 font-normal">· {ventas.length}</span>
+                  </span>
+                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                    {contarPorEstado(ventas).map(([estado, cantidad]) => (
+                      <button
+                        key={estado}
+                        type="button"
+                        onClick={() =>
+                          setPopup({
+                            titulo: fmtFecha(fecha),
+                            estado,
+                            grupos: [[fecha, ventas.filter((v) => (v.estado || "SIN ESTADO") === estado)]],
+                          })
+                        }
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-semibold cursor-pointer hover:brightness-125 transition ${BADGE_ESTADO[estado] || BADGE_ESTADO_DEFAULT}`}
+                      >
+                        {cantidad} {estado}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
         </div>
       )}
@@ -188,8 +222,10 @@ export default function MiResumenAsesor({ resumen, detalleEstado, detalleDiaDia 
           >
             <div className="flex items-center justify-between mb-3">
               <div>
-                <div className="text-xs text-white/60">{popup.titulo}</div>
-                <div className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${BADGE_ESTADO[popup.estado] || "bg-white/10 text-white/70"}`}>
+                <div className="text-xs text-white/60">
+                  {popup.titulo} · {popup.grupos.reduce((acc, [, v]) => acc + v.length, 0)} en total
+                </div>
+                <div className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${BADGE_ESTADO[popup.estado] || BADGE_ESTADO_DEFAULT}`}>
                   {popup.estado}
                 </div>
               </div>
