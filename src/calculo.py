@@ -65,8 +65,11 @@ def calcular_proyeccion(
             categoria = m["categoria"]
             meta_mes = int(m["meta_escala_1"])
             escala, base_pago = _escala_alcanzada(acumulado, m)
+            obs = m.get("observaciones")
+            observaciones = obs if isinstance(obs, str) else ""
         else:
             categoria, meta_mes, escala, base_pago = "SIN META", 0, 0, 0.0
+            observaciones = ""
 
         meta_diaria = _dividir(meta_mes, cal.dias_colectivo)
         faltan_para_meta = meta_mes - acumulado
@@ -91,6 +94,7 @@ def calcular_proyeccion(
             "pct_forecast": _dividir(forecast, meta_mes),
             "escala_alcanzada": escala,
             "base_pago_proyectada": base_pago,
+            "observaciones": observaciones,
         })
 
     return pd.DataFrame(filas)

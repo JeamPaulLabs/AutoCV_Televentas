@@ -1,0 +1,8 @@
+# Parámetros de comisión por periodo (otrosíes al acta de metas).
+# Si un periodo no aparece, aplica el esquema base del acta (100% de la meta).
+periodos:
+  "2026-09":
+    otrosi_activo: true
+    meta_equipo_altas_positivas: 2000
+    pct_minimo_comision: 0.80
+    documento: "Otrosí, esquema de comisión septiembre 2026"

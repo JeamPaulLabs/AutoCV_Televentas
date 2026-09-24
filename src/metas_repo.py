@@ -32,7 +32,7 @@ def leer_metas(periodo: dt.date) -> pd.DataFrame:
         SELECT asesor, categoria,
                meta_escala_1, base_pago_escala_1,
                meta_escala_2, base_pago_escala_2,
-               meta_escala_3, base_pago_escala_3
+               meta_escala_3, base_pago_escala_3, observaciones
         FROM como_vamos_televentas.metas
         WHERE periodo = %(periodo)s
     """

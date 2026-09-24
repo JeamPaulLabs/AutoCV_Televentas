@@ -198,9 +198,14 @@ def _fila_asesor(fila: pd.Series) -> str:
     color = _semaforo(fila["pct_cumpl_acumulado"], fila["pct_cump_ideal"])
     ancho = min(fila["pct_cumpl_acumulado"] * 100, 100)
     escala_txt = f"Escala {int(fila['escala_alcanzada'])}" if fila["escala_alcanzada"] else "—"
+    obs = fila.get("observaciones", "")
+    nota_obs = (
+        f'<div style="font-size:11px;line-height:1.2;color:#b8860b;margin-top:2px">ⓘ {html.escape(obs)}</div>'
+        if isinstance(obs, str) and obs else ""
+    )
     return f"""
     <tr>
-      <td>{html.escape(str(fila['asesor']))}</td>
+      <td>{html.escape(str(fila['asesor']))}{nota_obs}</td>
       <td>{html.escape(str(fila['categoria']))}</td>
       <td class="num">{fila['meta_mes']:,.0f}</td>
       <td class="num">{fila['acumulado']:,.0f}</td>
@@ -509,6 +514,15 @@ def generar_dashboard(
       {tabla_producto_vanti}
     </div>
   </div>
+
+  {f'''
+  <h2>Rueda Seguro — Auditoría de ventas (RS)</h2>
+  <div class="grid-2">
+    <div>{tabla_rs}</div>
+    <div>{tabla_rs_asesor}</div>
+  </div>
+  ''' if tabla_rs else ''}
+
   </div>
 </main>
 <footer>

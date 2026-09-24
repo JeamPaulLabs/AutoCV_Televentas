@@ -41,7 +41,14 @@ export default function TablaAsesores({ filas }) {
             const ancho = Math.min(fila.pct_cumpl_acumulado * 100, 100);
             return (
               <tr key={fila.asesor} className="border-t border-white/10 text-white/85">
-                <td className="px-2.5 py-1">{fila.asesor}</td>
+                <td className="px-2.5 py-1">
+                  {fila.asesor}
+                  {fila.observaciones && (
+                    <div className="text-[10px] leading-tight text-amber-300/80 mt-0.5 max-w-[240px]">
+                      ⓘ {fila.observaciones}
+                    </div>
+                  )}
+                </td>
                 <td className="px-2.5 py-1">{fila.categoria}</td>
                 <td className="px-2.5 py-1 text-right tabular-nums">{fmtNumero(fila.meta_mes)}</td>
                 <td className="px-2.5 py-1 text-right tabular-nums">{fmtNumero(fila.acumulado)}</td>

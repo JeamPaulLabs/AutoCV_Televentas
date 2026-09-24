@@ -82,6 +82,7 @@ def leer_televentas(periodo: dt.date, fecha_corte: dt.date | None = None) -> pd.
             return pd.read_sql(query, conn, params={"id_cierre": cierre["id_cierre"]})
 
     colectivo = _colectivo_de(periodo)
+    fecha_inicio = periodo.replace(day=1)  # primer día del mes — filtro de corte inferior
     query = """
         SELECT id_poliza, fecha_venta, fecha_digitacion, asesor, supervisor,
                estrategia, producto, plan, colectivo, entidad_facturacion,
@@ -90,6 +91,7 @@ def leer_televentas(periodo: dt.date, fecha_corte: dt.date | None = None) -> pd.
         WHERE estrategia = 'Televentas' AND colectivo = %(colectivo)s
           AND supervisor = %(supervisor)s
           AND nombre_estado <> 'RENOVACION'
+          AND fecha_venta::date >= %(fecha_inicio)s
     """
     # RENOVACION = renovación automática de póliza existente, no una venta
     # cantada por el asesor -- se excluye para conciliar con el reporte
@@ -97,7 +99,10 @@ def leer_televentas(periodo: dt.date, fecha_corte: dt.date | None = None) -> pd.
     # Rueda Segura vive en ilio.v_rueda_segura, una vista aparte -- se reporta
     # por separado (ver leer_rueda_segura) y no se mezcla con este acumulado
     # de Cuota Protegida (ver validación RS agosto 2026, Breiner y Konny).
-    params: dict = {"colectivo": colectivo, "supervisor": "SUPERVISOR  TMK 1"}
+    # fecha_inicio evita que pólizas con colectivo del periodo pero fecha_venta
+    # en el mes anterior (rezagos de digitación) aparezcan en el dashboard del
+    # mes actual (ver ajuste de corte, sept 2026).
+    params: dict = {"colectivo": colectivo, "supervisor": "SUPERVISOR  TMK 1", "fecha_inicio": fecha_inicio}
     if fecha_corte is not None:
         query += " AND fecha_venta::date <= %(fecha_corte)s"
         params["fecha_corte"] = fecha_corte
@@ -113,6 +118,7 @@ def leer_rueda_segura(periodo: dt.date, fecha_corte: dt.date | None = None) -> p
     separada). A diferencia del Excel de auditoría RS (ver ruedas_seguro_repo),
     esta fuente sí refleja el corte completo del mes porque viene de Ilio."""
     colectivo = _colectivo_de(periodo)
+    fecha_inicio = periodo.replace(day=1)  # primer día del mes — filtro de corte inferior
     query = """
         SELECT id_poliza, fecha_venta, fecha_digitacion, asesor, supervisor,
                estrategia, producto, plan, colectivo, entidad_facturacion,
@@ -121,8 +127,9 @@ def leer_rueda_segura(periodo: dt.date, fecha_corte: dt.date | None = None) -> p
         WHERE estrategia = 'Televentas' AND colectivo = %(colectivo)s
           AND supervisor = %(supervisor)s
           AND nombre_estado <> 'RENOVACION'
+          AND fecha_venta::date >= %(fecha_inicio)s
     """
-    params: dict = {"colectivo": colectivo, "supervisor": "SUPERVISOR  TMK 1"}
+    params: dict = {"colectivo": colectivo, "supervisor": "SUPERVISOR  TMK 1", "fecha_inicio": fecha_inicio}
     if fecha_corte is not None:
         query += " AND fecha_venta::date <= %(fecha_corte)s"
         params["fecha_corte"] = fecha_corte

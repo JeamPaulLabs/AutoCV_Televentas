@@ -82,7 +82,7 @@ def main() -> None:
 
     df_rs_ilio = leer_rueda_segura(periodo, fecha_corte)
     try:
-        df_rs = combinar_con_ilio(leer_rs(), df_rs_ilio)
+        df_rs = combinar_con_ilio(leer_rs(), df_rs_ilio, periodo=periodo)
     except FileNotFoundError as e:
         print(f"AVISO: no se pudo leer el Excel de auditoría RS, se usa solo Ilio: {e}")
         df_rs = df_rs_ilio

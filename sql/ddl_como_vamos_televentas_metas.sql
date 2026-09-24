@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS como_vamos_televentas.metas (
     meta_escala_3        INTEGER,
     base_pago_escala_3   NUMERIC(14, 2),
     fuente               TEXT,                         -- ej. 'ACTAS ASESORES AGOSTO 2026.pdf'
+    observaciones        TEXT,                         -- ajustes de meta por novedad (incapacidad, etc.)
     creado_en            TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (periodo, asesor_norm)
 );

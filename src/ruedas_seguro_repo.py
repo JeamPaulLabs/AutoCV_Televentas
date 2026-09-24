@@ -4,6 +4,7 @@ credenciales de Graph/SharePoint porque el archivo ya llega a disco vía la
 sincronización normal de OneDrive del usuario."""
 from __future__ import annotations
 
+import datetime as dt
 import glob
 import os
 from pathlib import Path
@@ -34,7 +35,11 @@ def leer_rs() -> pd.DataFrame:
     return df
 
 
-def combinar_con_ilio(df_excel: pd.DataFrame, df_ilio: pd.DataFrame) -> pd.DataFrame:
+def combinar_con_ilio(
+    df_excel: pd.DataFrame,
+    df_ilio: pd.DataFrame,
+    periodo: dt.date | None = None,
+) -> pd.DataFrame:
     """Une el Excel de auditoría RS (todo intento registrado, aprobado o por
     subsanar) con ilio.v_rueda_segura (solo lo que ya llegó a Ilio como
     póliza), por número de contrato -- ninguna de las dos fuentes sola trae
@@ -42,7 +47,12 @@ def combinar_con_ilio(df_excel: pd.DataFrame, df_ilio: pd.DataFrame) -> pd.DataF
     asesor (aún no se resolvió su Subsanar), Ilio se queda corto en lo que
     todavía no se ha digitado. Devuelve una fila por contrato único con
     columnas id_poliza/asesor/fecha_venta, listas para los resumenes RS
-    (ver validación RS agosto 2026 -- unión dio 64 contra 36 solo-Ilio)."""
+    (ver validación RS agosto 2026 -- unión dio 64 contra 36 solo-Ilio).
+
+    Si se pasa `periodo` (primer día del mes), se descartan los contratos
+    cuya fecha_venta caiga fuera de ese mes -- evita que el Excel de auditoría
+    (que acumula meses anteriores) lleve registros viejos al dashboard del mes
+    en curso (ver ajuste de corte sept 2026)."""
     excel = df_excel.copy()
     excel["CONTRATO"] = excel["CONTRATO"].astype(str)
     excel = excel[excel["CONTRATO"] != "0"]
@@ -83,6 +93,19 @@ def combinar_con_ilio(df_excel: pd.DataFrame, df_ilio: pd.DataFrame) -> pd.DataF
 
     df = pd.DataFrame(filas)
     df["fecha_venta"] = pd.to_datetime(df["fecha_venta"]).dt.date
+
+    # Filtro de mes: descartar contratos fuera del periodo solicitado.
+    # El Excel de auditoría acumula meses anteriores; sin este filtro, los
+    # registros de agosto aparecen en el dashboard de septiembre.
+    if periodo is not None:
+        fecha_inicio = periodo.replace(day=1)
+        # Último día del mes: primero del mes siguiente menos un día
+        if fecha_inicio.month == 12:
+            fecha_fin = fecha_inicio.replace(year=fecha_inicio.year + 1, month=1, day=1)
+        else:
+            fecha_fin = fecha_inicio.replace(month=fecha_inicio.month + 1, day=1)
+        df = df[(df["fecha_venta"] >= fecha_inicio) & (df["fecha_venta"] < fecha_fin)]
+
     return df
 
 

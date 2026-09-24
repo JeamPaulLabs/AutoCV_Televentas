@@ -23,6 +23,7 @@ from src.ilio_repo import (
     periodo_esta_cerrado,
     ultima_actualizacion_ilio,
 )
+from src.comisiones import estado_otrosi
 from src.metas_repo import asesores_sin_meta, leer_metas
 from src.pivote import (
     kpis_facturacion,
@@ -123,7 +124,7 @@ def dashboard(
 
     df_rs_ilio = leer_rueda_segura(periodo_d, fecha_corte_d)
     try:
-        df_rs = combinar_con_ilio(leer_rs(), df_rs_ilio)
+        df_rs = combinar_con_ilio(leer_rs(), df_rs_ilio, periodo=periodo_d)
     except FileNotFoundError:
         df_rs = df_rs_ilio
     tabla_rs_dias = resumen_rs_por_dia(df_rs).assign(
@@ -164,6 +165,7 @@ def dashboard(
                 "meta_total": float(df_proyeccion["meta_mes"].sum()),
                 "acumulado_total": float(df_proyeccion["acumulado"].sum()),
                 "forecast_total": float(df_proyeccion["forecast"].sum()),
+                "otrosi": estado_otrosi(periodo_d, df_ventas, df_rs_ilio),
             },
             "tabla_dias": df_records(df_por_dia),
             "tabla_producto": df_records(df_por_producto),
