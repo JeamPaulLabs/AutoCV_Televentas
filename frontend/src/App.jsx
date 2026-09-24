@@ -8,6 +8,7 @@ import TablaConteo from "./components/TablaConteo";
 import TablaAsesores from "./components/TablaAsesores";
 import TablaDetalleAsesor from "./components/TablaDetalleAsesor";
 import MiResumenAsesor from "./components/MiResumenAsesor";
+import OtrosiCard from "./components/OtrosiCard";
 import Tabs from "./components/Tabs";
 
 const PERIODO_STORAGE_KEY = "como-vamos-televentas:periodo";
@@ -113,6 +114,8 @@ export default function App() {
             </button>
           </div>
         )}
+
+        {data?.otrosi && <OtrosiCard otrosi={data.otrosi} />}
 
         {data?.vista === "personal" && (
           <MiResumenAsesor

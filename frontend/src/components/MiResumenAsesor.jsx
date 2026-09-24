@@ -96,6 +96,12 @@ export default function MiResumenAsesor({ resumen, detalleEstado, detalleDiaDia 
   return (
     <div className="grid lg:grid-cols-[minmax(0,1fr)_1.3fr] gap-4 items-start">
       <div className="space-y-3">
+        {resumen.observaciones && (
+          <div className="rounded-2xl border border-amber-300/40 bg-amber-400/10 px-4 py-3 text-xs text-amber-100">
+            <div className="font-semibold mb-0.5">Ajuste en tu meta</div>
+            {resumen.observaciones}
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-2.5">
           <StatTile label="Categoría" value={resumen.categoria} />
           <StatTile label="Meta del mes" value={fmtNumero(resumen.meta_mes)} />

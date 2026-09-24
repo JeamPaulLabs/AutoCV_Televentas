@@ -148,6 +148,7 @@ def dashboard(
         "fecha_corte": cal.fecha_corte.isoformat(),
         "cerrado": cerrado,
         "actualizado_en": actualizado_en,
+        "otrosi": estado_otrosi(periodo_d, df_ventas, df_rs_ilio),
         "calendario": {
             "dias_colectivo": cal.dias_colectivo,
             "dias_laborados": cal.dias_laborados,
@@ -165,7 +166,6 @@ def dashboard(
                 "meta_total": float(df_proyeccion["meta_mes"].sum()),
                 "acumulado_total": float(df_proyeccion["acumulado"].sum()),
                 "forecast_total": float(df_proyeccion["forecast"].sum()),
-                "otrosi": estado_otrosi(periodo_d, df_ventas, df_rs_ilio),
             },
             "tabla_dias": df_records(df_por_dia),
             "tabla_producto": df_records(df_por_producto),
