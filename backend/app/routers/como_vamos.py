@@ -186,10 +186,32 @@ def dashboard(
     if not mi_alias_norm:
         raise HTTPException(403, "Tu usuario no está vinculado a un asesor de televentas")
 
+    # Rueda Seguro propia (Konny y Breiner venden solo RS, sin meta de Cuota
+    # Protegida): conteo por día, sin plata.
+    mi_rs = []
+    if not df_rs.empty:
+        rs_mias = df_rs[df_rs["asesor"].map(_norm_nombre) == mi_alias_norm].sort_values(
+            "fecha_venta", ascending=False
+        )
+        mi_rs = [
+            {"fecha_venta": str(r.fecha_venta), "contrato": str(r.id_poliza)}
+            for r in rs_mias.itertuples(index=False)
+        ]
+
     mask_mio = df_proyeccion["asesor"].map(_norm_nombre) == mi_alias_norm
     mi_fila = df_proyeccion[mask_mio]
     if mi_fila.empty:
-        return {**base, "vista": "personal", "disponible": False}
+        if not mi_rs:
+            return {**base, "vista": "personal", "disponible": False}
+        return {
+            **base,
+            "vista": "personal",
+            "disponible": True,
+            "resumen": None,
+            "detalle_estado": None,
+            "detalle_dia_dia": [],
+            "rueda_segura": mi_rs,
+        }
 
     mask_pivote = df_pivote["asesor"].map(_norm_nombre) == mi_alias_norm
     mi_detalle = df_pivote[mask_pivote]
@@ -221,6 +243,7 @@ def dashboard(
         "resumen": resumen,
         "detalle_estado": df_records(mi_detalle)[0] if not mi_detalle.empty else None,
         "detalle_dia_dia": detalle_dia_dia,
+        "rueda_segura": mi_rs,
     }
 
 

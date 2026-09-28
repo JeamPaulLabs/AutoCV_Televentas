@@ -122,6 +122,7 @@ export default function App() {
             resumen={data.resumen}
             detalleEstado={data.detalle_estado}
             detalleDiaDia={data.detalle_dia_dia}
+            ruedaSegura={data.rueda_segura}
           />
         )}
 

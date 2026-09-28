@@ -71,13 +71,43 @@ function contarPorEstado(ventas) {
   });
 }
 
-export default function MiResumenAsesor({ resumen, detalleEstado, detalleDiaDia }) {
+/** Ventas propias de Rueda Seguro por día, con sus contratos. */
+function TarjetaRuedaSeguro({ ventas }) {
+  const grupos = agruparPorDia(ventas);
+  return (
+    <div className="glass rounded-2xl px-5 py-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-xs uppercase tracking-wide text-white/60 font-semibold">
+          Rueda Seguro
+        </div>
+        <div className="text-2xl font-bold text-white tabular-nums">{ventas.length}</div>
+      </div>
+      <div className="space-y-1.5 max-h-72 overflow-auto pr-1">
+        {grupos.map(([fecha, items]) => (
+          <div key={fecha} className="rounded-lg border border-white/10 px-3 py-2 text-xs">
+            <div className="font-semibold text-white">
+              {fmtFecha(fecha)} <span className="text-white/40 font-normal">· {items.length}</span>
+            </div>
+            <div className="text-white/60 tabular-nums">{items.map((v) => v.contrato).join(", ")}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function MiResumenAsesor({ resumen, detalleEstado, detalleDiaDia, ruedaSegura }) {
   const detalle = detalleDiaDia || [];
+  const rs = ruedaSegura || [];
   const [popup, setPopup] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState(null);
 
   if (!resumen) {
-    return (
+    return rs.length > 0 ? (
+      <div className="max-w-xl">
+        <TarjetaRuedaSeguro ventas={rs} />
+      </div>
+    ) : (
       <div className="glass rounded-2xl px-5 py-6 text-sm text-white/60">
         Todavía no tienes ventas registradas este mes.
       </div>
@@ -127,6 +157,8 @@ export default function MiResumenAsesor({ resumen, detalleEstado, detalleDiaDia 
               : `Ideal a la fecha: ${fmtPct(resumen.pct_cump_ideal)} · faltan ${fmtNumero(Math.max(resumen.faltan_para_meta, 0))} para la meta`}
           </div>
         </div>
+
+        {rs.length > 0 && <TarjetaRuedaSeguro ventas={rs} />}
 
         {estados.length > 0 && (
           <div className="glass rounded-2xl px-5 py-4">
