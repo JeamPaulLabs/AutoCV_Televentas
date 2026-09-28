@@ -30,6 +30,24 @@ ESTADOS_POSITIVOS = ("AUDITADA WEB", "ALTA TRANSACCIONAL")
 DUPLICADOS_ILIO_CONOCIDOS = {3183230, 3184799}
 
 
+def _ultimo_estado_por_contrato(df: pd.DataFrame) -> pd.DataFrame:
+    """Deja una sola fila por contrato + asesor + producto: el registro más
+    reciente (fecha_digitacion, y id_poliza como desempate). Un mismo contrato
+    puede tener productos o asesores distintos, y eso son ventas distintas.
+    Los cambios de estado son válidos durante el mes; al cerrarlo, cerrar_mes
+    congela el resultado en cierre_mensual. Cuando una venta avanza de
+    estado, Ilio crea un id_poliza nuevo para el mismo contrato y deja el
+    original en su estado anterior, así que la misma venta se veía dos veces
+    (ver contrato 64509434 de Laura, sept 2026). Contratos nulos se conservan."""
+    sin_contrato = df["numero_contrato"].isna()
+    ultimos = (
+        df[~sin_contrato]
+        .sort_values(["fecha_digitacion", "id_poliza"])
+        .drop_duplicates(["numero_contrato", "asesor", "producto"], keep="last")
+    )
+    return pd.concat([ultimos, df[sin_contrato]]).sort_index()
+
+
 def _colectivo_de(periodo: dt.date) -> str:
     """'2026-08-01' -> 'AGOSTO 2026', para filtrar por la columna colectivo de Ilio."""
     return f"{MESES_ES[periodo.month]} {periodo.year}"
@@ -109,7 +127,8 @@ def leer_televentas(periodo: dt.date, fecha_corte: dt.date | None = None) -> pd.
 
     with get_conexion() as conn:
         df = pd.read_sql(query, conn, params=params)
-    return df[~df["id_poliza"].isin(DUPLICADOS_ILIO_CONOCIDOS)]
+    df = df[~df["id_poliza"].isin(DUPLICADOS_ILIO_CONOCIDOS)]
+    return _ultimo_estado_por_contrato(df)
 
 
 def leer_rueda_segura(periodo: dt.date, fecha_corte: dt.date | None = None) -> pd.DataFrame:
