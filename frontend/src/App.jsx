@@ -13,10 +13,26 @@ import Tabs from "./components/Tabs";
 
 const PERIODO_STORAGE_KEY = "como-vamos-televentas:periodo";
 
-// Por el momento el tablero solo abre agosto y el mes en curso (septiembre)
-// -- ver conversación 2026-09-01. Debe calzar con PERIODOS_DISPONIBLES en
+// Desde agosto 2026 hasta el mes en curso -- la pestaña del mes nuevo aparece
+// sola. Debe calzar con periodos_disponibles() en
 // backend/app/routers/como_vamos.py (el backend rechaza cualquier otro).
-const PERIODOS = ["2026-08", "2026-09"];
+function periodosDisponibles() {
+  const hoy = new Date();
+  const periodos = [];
+  let anio = 2026;
+  let mes = 8;
+  while (anio < hoy.getFullYear() || (anio === hoy.getFullYear() && mes <= hoy.getMonth() + 1)) {
+    periodos.push(`${anio}-${String(mes).padStart(2, "0")}`);
+    mes += 1;
+    if (mes > 12) {
+      mes = 1;
+      anio += 1;
+    }
+  }
+  return periodos;
+}
+
+const PERIODOS = periodosDisponibles();
 
 function periodoInicial() {
   try {

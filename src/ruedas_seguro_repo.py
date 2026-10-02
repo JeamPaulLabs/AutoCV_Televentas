@@ -76,7 +76,13 @@ def combinar_con_ilio(
         return nombre_excel.strip().upper()
 
     excel_por_contrato = excel.drop_duplicates("CONTRATO").set_index("CONTRATO")
-    ilio_por_contrato = ilio.drop_duplicates("numero_contrato").set_index("numero_contrato")
+    # Ilio crea un id_poliza nuevo cuando la venta avanza de estado: se
+    # conserva el registro más reciente de cada contrato.
+    ilio_por_contrato = (
+        ilio.sort_values(["fecha_digitacion", "id_poliza"])
+        .drop_duplicates("numero_contrato", keep="last")
+        .set_index("numero_contrato")
+    )
 
     contratos = set(excel_por_contrato.index) | set(ilio_por_contrato.index)
     filas = []
@@ -85,11 +91,17 @@ def combinar_con_ilio(
         if en_ilio:
             r = ilio_por_contrato.loc[contrato]
             asesor, fecha_venta = r["asesor"], r["fecha_venta"]
+            producto, estado = r["producto"], r["nombre_estado"]
         else:
             r = excel_por_contrato.loc[contrato]
             asesor = _nombre_canonico(str(r["ASESOR"]))
             fecha_venta = pd.to_datetime(r["FECHA DE VENTA"]).date()
-        filas.append({"id_poliza": contrato, "asesor": asesor, "fecha_venta": fecha_venta})
+            producto = None
+            estado = str(r["ESTADO DE LA VENTA"]).strip().upper() if "ESTADO DE LA VENTA" in r.index and pd.notna(r["ESTADO DE LA VENTA"]) else None
+        filas.append({
+            "id_poliza": contrato, "asesor": asesor, "fecha_venta": fecha_venta,
+            "producto": producto, "nombre_estado": estado,
+        })
 
     df = pd.DataFrame(filas)
     df["fecha_venta"] = pd.to_datetime(df["fecha_venta"]).dt.date

@@ -23,6 +23,7 @@ const BADGE_ESTADO = {
   "DIGITADA WEB": "bg-amber-900 text-amber-200",
   "CANCELADA": "bg-red-900 text-red-200",
 };
+const ESTADOS_ALTA = ["AUDITADA WEB", "ALTA TRANSACCIONAL"];
 const BADGE_ESTADO_DEFAULT = "bg-white/15 text-white/80";
 
 function fmtFecha(iso) {
@@ -97,35 +98,47 @@ function TarjetaRuedaSeguro({ ventas }) {
 }
 
 export default function MiResumenAsesor({ resumen, detalleEstado, detalleDiaDia, ruedaSegura }) {
-  const detalle = detalleDiaDia || [];
   const rs = ruedaSegura || [];
   const [popup, setPopup] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState(null);
 
-  if (!resumen) {
-    return rs.length > 0 ? (
-      <div className="max-w-xl">
-        <TarjetaRuedaSeguro ventas={rs} />
-      </div>
-    ) : (
+  if (!resumen && rs.length === 0) {
+    return (
       <div className="glass rounded-2xl px-5 py-6 text-sm text-white/60">
         Todavía no tienes ventas registradas este mes.
       </div>
     );
   }
 
-  const sinMeta = resumen.categoria === "SIN META";
-  const color = sinMeta ? WARNING : semaforo(resumen.pct_cumpl_acumulado, resumen.pct_cump_ideal);
-  const avance = Math.min(resumen.pct_cumpl_acumulado * 100, 100);
+  // Asesores que venden solo Rueda Seguro (sin meta de Cuota Protegida):
+  // ven la misma pantalla que los demás comerciales, pero con sus ventas de RS.
+  const soloRS = rs.length > 0 && (!resumen || (detalleDiaDia || []).length === 0);
+  const detalle = soloRS ? rs : detalleDiaDia || [];
 
-  const estados = detalleEstado
+  const sinMeta = !soloRS && resumen?.categoria === "SIN META";
+  const color = soloRS || sinMeta ? WARNING : semaforo(resumen.pct_cumpl_acumulado, resumen.pct_cump_ideal);
+  const avance = soloRS ? 0 : Math.min(resumen.pct_cumpl_acumulado * 100, 100);
+
+  const estados = soloRS
+    ? contarPorEstado(rs)
+    : detalleEstado
     ? Object.entries(detalleEstado).filter(([k]) => k !== "asesor" && k !== "Total general")
     : [];
-  const total = detalleEstado?.["Total general"];
+  const total = soloRS ? rs.length : detalleEstado?.["Total general"];
 
   return (
     <div className="grid lg:grid-cols-[minmax(0,1fr)_1.3fr] gap-4 items-start">
       <div className="space-y-3">
+        {soloRS ? (
+          <div className="grid grid-cols-2 gap-2.5">
+            <StatTile label="Ventas Rueda Seguro" value={fmtNumero(rs.length)} destacado />
+            <StatTile
+              label="Altas del mes"
+              value={fmtNumero(rs.filter((v) => ESTADOS_ALTA.includes(v.estado)).length)}
+            />
+          </div>
+        ) : (
+          <>
         {resumen.observaciones && (
           <div className="rounded-2xl border border-amber-300/40 bg-amber-400/10 px-4 py-3 text-xs text-amber-100">
             <div className="font-semibold mb-0.5">Ajuste en tu meta</div>
@@ -158,7 +171,10 @@ export default function MiResumenAsesor({ resumen, detalleEstado, detalleDiaDia,
           </div>
         </div>
 
-        {rs.length > 0 && <TarjetaRuedaSeguro ventas={rs} />}
+          </>
+        )}
+
+        {!soloRS && rs.length > 0 && <TarjetaRuedaSeguro ventas={rs} />}
 
         {estados.length > 0 && (
           <div className="glass rounded-2xl px-5 py-4">
@@ -207,11 +223,11 @@ export default function MiResumenAsesor({ resumen, detalleEstado, detalleDiaDia,
         )}
       </div>
 
-      {detalleDiaDia && detalleDiaDia.length > 0 && (
+      {detalle.length > 0 && (
         <div className="glass rounded-2xl px-5 py-4 lg:sticky lg:top-[76px]">
           <div className="flex items-center justify-between mb-3">
             <div className="text-xs uppercase tracking-wide text-white/60 font-semibold">
-              Día a día del mes
+              Día a día del mes{soloRS ? " — Rueda Seguro" : ""}
             </div>
             {filtroEstado && (
               <button

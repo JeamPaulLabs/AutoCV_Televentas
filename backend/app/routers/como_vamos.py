@@ -43,9 +43,19 @@ from ..utils import df_records
 
 router = APIRouter()
 
-# Por el momento el tablero solo muestra estos dos meses -- ver conversación
-# 2026-09-01. Ampliar esta tupla cuando se decida abrir más historia.
-PERIODOS_DISPONIBLES = ("2026-08", "2026-09")
+# El tablero abre desde agosto 2026 (primer mes con datos validados) hasta el
+# mes en curso -- la pestaña del mes nuevo aparece sola al cambiar de mes.
+PRIMER_PERIODO = (2026, 8)
+
+
+def periodos_disponibles(hoy: dt.date | None = None) -> list[str]:
+    hoy = hoy or dt.date.today()
+    anio, mes = PRIMER_PERIODO
+    periodos = []
+    while (anio, mes) <= (hoy.year, hoy.month):
+        periodos.append(f"{anio}-{mes:02d}")
+        anio, mes = (anio + 1, 1) if mes == 12 else (anio, mes + 1)
+    return periodos
 
 
 def _norm_nombre(txt: str | None) -> str:
@@ -68,8 +78,9 @@ def _mi_alias_norm(id_usuario: int) -> str | None:
 
 
 def _parse_periodo(periodo: str) -> dt.date:
-    if periodo not in PERIODOS_DISPONIBLES:
-        raise HTTPException(400, f"periodo no disponible, usa uno de: {', '.join(PERIODOS_DISPONIBLES)}")
+    disponibles = periodos_disponibles()
+    if periodo not in disponibles:
+        raise HTTPException(400, f"periodo no disponible, usa uno de: {', '.join(disponibles)}")
     try:
         return dt.datetime.strptime(periodo, "%Y-%m").date().replace(day=1)
     except ValueError:
@@ -83,6 +94,11 @@ def _parse_fecha(fecha: str | None) -> dt.date:
         return dt.datetime.strptime(fecha, "%Y-%m-%d").date()
     except ValueError:
         raise HTTPException(400, "fecha_corte inválida, formato esperado YYYY-MM-DD")
+
+
+@router.get("/periodos")
+def periodos(current: dict = Depends(get_current_user)):
+    return {"periodos": periodos_disponibles()}
 
 
 @router.get("/dashboard")
@@ -186,15 +202,21 @@ def dashboard(
     if not mi_alias_norm:
         raise HTTPException(403, "Tu usuario no está vinculado a un asesor de televentas")
 
-    # Rueda Seguro propia (Konny y Breiner venden solo RS, sin meta de Cuota
-    # Protegida): conteo por día, sin plata.
+    # Rueda Seguro propia: mismo formato que las ventas de Cuota Protegida
+    # (contrato, producto, estado) para mostrar la misma vista que los demás
+    # comerciales, pero con sus ventas de RS.
     mi_rs = []
     if not df_rs.empty:
         rs_mias = df_rs[df_rs["asesor"].map(_norm_nombre) == mi_alias_norm].sort_values(
             "fecha_venta", ascending=False
         )
         mi_rs = [
-            {"fecha_venta": str(r.fecha_venta), "contrato": str(r.id_poliza)}
+            {
+                "fecha_venta": str(r.fecha_venta),
+                "contrato": str(r.id_poliza),
+                "producto": r.producto if isinstance(r.producto, str) else "Rueda Seguro",
+                "estado": r.nombre_estado if isinstance(r.nombre_estado, str) else None,
+            }
             for r in rs_mias.itertuples(index=False)
         ]
 
