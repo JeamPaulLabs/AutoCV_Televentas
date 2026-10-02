@@ -13,7 +13,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -37,6 +37,23 @@ app.add_middleware(
     allow_methods=["GET"],
     allow_headers=["*"],
 )
+
+
+
+@app.middleware("http")
+async def sin_cache_obsoleto(request: Request, call_next):
+    """El navegador no debe quedarse con una versión vieja del tablero: la API
+    nunca se cachea y el index.html se revalida en cada visita (así, tras un
+    deploy, cada PC baja los assets nuevos -- esos llevan hash en el nombre y
+    sí se pueden cachear sin riesgo)."""
+    response = await call_next(request)
+    path = request.url.path
+    if path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store"
+    elif path.startswith("/comovamos") and not path.startswith("/comovamos/assets/"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
+
 
 app.include_router(como_vamos.router, prefix="/api/como-vamos", tags=["como-vamos"])
 
