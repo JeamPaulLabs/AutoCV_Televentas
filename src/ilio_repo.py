@@ -79,6 +79,21 @@ def periodo_esta_cerrado(periodo: dt.date) -> dict | None:
         return cur.fetchone()
 
 
+def _params_periodo(periodo: dt.date, colectivo: str, fecha_inicio: dt.date) -> dict:
+    """Parámetros comunes de las consultas a Ilio. Algunos planes nuevos (Vida
+    Zurich Plan 1, octubre 2026) llegan con colectivo anual 'COLOMBIA 2026' en
+    vez del colectivo mensual; se aceptan acotados al mes por fecha_venta (el
+    tope superior evita que cuenten en otros meses del mismo año)."""
+    fecha_fin = (fecha_inicio.replace(day=28) + dt.timedelta(days=4)).replace(day=1)
+    return {
+        "colectivo": colectivo,
+        "colectivo_anual": f"COLOMBIA {periodo.year}",
+        "supervisor": "SUPERVISOR  TMK 1",
+        "fecha_inicio": fecha_inicio,
+        "fecha_fin": fecha_fin,
+    }
+
+
 def leer_televentas(periodo: dt.date, fecha_corte: dt.date | None = None) -> pd.DataFrame:
     """
     Trae las pólizas de Televentas de un periodo.
@@ -106,10 +121,11 @@ def leer_televentas(periodo: dt.date, fecha_corte: dt.date | None = None) -> pd.
                estrategia, producto, plan, colectivo, entidad_facturacion,
                tarifa, nombre_estado, numero_contrato
         FROM ilio.v_cuota_protegida
-        WHERE estrategia = 'Televentas' AND colectivo = %(colectivo)s
+        WHERE estrategia = 'Televentas' AND colectivo IN (%(colectivo)s, %(colectivo_anual)s)
           AND supervisor = %(supervisor)s
           AND nombre_estado <> 'RENOVACION'
           AND fecha_venta::date >= %(fecha_inicio)s
+          AND fecha_venta::date < %(fecha_fin)s
     """
     # RENOVACION = renovación automática de póliza existente, no una venta
     # cantada por el asesor -- se excluye para conciliar con el reporte
@@ -120,7 +136,7 @@ def leer_televentas(periodo: dt.date, fecha_corte: dt.date | None = None) -> pd.
     # fecha_inicio evita que pólizas con colectivo del periodo pero fecha_venta
     # en el mes anterior (rezagos de digitación) aparezcan en el dashboard del
     # mes actual (ver ajuste de corte, sept 2026).
-    params: dict = {"colectivo": colectivo, "supervisor": "SUPERVISOR  TMK 1", "fecha_inicio": fecha_inicio}
+    params: dict = _params_periodo(periodo, colectivo, fecha_inicio)
     if fecha_corte is not None:
         query += " AND fecha_venta::date <= %(fecha_corte)s"
         params["fecha_corte"] = fecha_corte
@@ -143,12 +159,13 @@ def leer_rueda_segura(periodo: dt.date, fecha_corte: dt.date | None = None) -> p
                estrategia, producto, plan, colectivo, entidad_facturacion,
                tarifa, nombre_estado, numero_contrato
         FROM ilio.v_rueda_segura
-        WHERE estrategia = 'Televentas' AND colectivo = %(colectivo)s
+        WHERE estrategia = 'Televentas' AND colectivo IN (%(colectivo)s, %(colectivo_anual)s)
           AND supervisor = %(supervisor)s
           AND nombre_estado <> 'RENOVACION'
           AND fecha_venta::date >= %(fecha_inicio)s
+          AND fecha_venta::date < %(fecha_fin)s
     """
-    params: dict = {"colectivo": colectivo, "supervisor": "SUPERVISOR  TMK 1", "fecha_inicio": fecha_inicio}
+    params: dict = _params_periodo(periodo, colectivo, fecha_inicio)
     if fecha_corte is not None:
         query += " AND fecha_venta::date <= %(fecha_corte)s"
         params["fecha_corte"] = fecha_corte
