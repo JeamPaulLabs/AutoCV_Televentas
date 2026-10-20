@@ -44,6 +44,12 @@ function etiquetaProducto(producto) {
   return { corto: "CP", nombre: "Cuota Protegida" };
 }
 
+function normContratoJs(v) {
+  let s = v == null ? "" : String(v).trim();
+  if (s.endsWith(".0")) s = s.slice(0, -2);
+  return s.replace(/\s+/g, "");
+}
+
 function fmtFecha(iso) {
   if (!iso) return "—";
   // "2026-09-01" es una fecha sin hora -- new Date(iso) la lee como
@@ -105,7 +111,8 @@ function contarPorProducto(ventas) {
 /** Sección unificada: "Pólizas por estado" (clicables para filtrar) a la
  * izquierda y "Día a día" con los contratos a la derecha. Un solo bloque para
  * todos los productos; cada fila se identifica con CP / RS / BP. */
-function SeccionVentas({ ventas }) {
+function SeccionVentas({ ventas, canceladasContratos }) {
+  const cancelSet = canceladasContratos || new Set();
   const [filtroEstado, setFiltroEstado] = useState(null);
   const [filtroProducto, setFiltroProducto] = useState(null);
   const [popup, setPopup] = useState(null);
@@ -229,8 +236,17 @@ function SeccionVentas({ ventas }) {
             .filter(([, items]) => items.length > 0)
             .map(([fecha, items]) => (
               <div key={fecha} className="rounded-lg border border-white/10 px-3 py-2 flex items-center justify-between gap-2 flex-wrap">
-                <span className="font-semibold text-white text-xs shrink-0">
+                <span className="font-semibold text-white text-xs shrink-0 flex items-center gap-1.5">
                   {fmtFecha(fecha)} <span className="text-white/40 font-normal">· {items.length}</span>
+                  {(() => {
+                    const n = items.filter((v) => cancelSet.has(normContratoJs(v.contrato))).length;
+                    if (!n) return null;
+                    return (
+                      <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-red-900/60 text-red-200" title="Contratos con revisión de cancelada">
+                        📋 {n}
+                      </span>
+                    );
+                  })()}
                 </span>
                 <div className="flex items-center gap-1.5 flex-wrap justify-end">
                   {contarPorProducto(items).map(([corto, cantidad]) => (
@@ -328,7 +344,104 @@ function SeccionVentas({ ventas }) {
   );
 }
 
-export default function MiResumenAsesor({ resumen, detalleDiaDia, billetera }) {
+function TextoLargo({ texto, max = 140 }) {
+  const [abierto, setAbierto] = useState(false);
+  if (!texto) return <span className="text-white/40">—</span>;
+  if (texto.length <= max) return <span className="text-white/75">{texto}</span>;
+  return (
+    <span className="text-white/75">
+      {abierto ? texto : texto.slice(0, max) + "…"}
+      <button
+        type="button"
+        onClick={() => setAbierto((v) => !v)}
+        className="ml-1.5 text-xuma-green-light hover:underline text-[10px] font-semibold"
+      >
+        {abierto ? "ver menos" : "ver completo"}
+      </button>
+    </span>
+  );
+}
+
+function SeccionCanceladas({ items }) {
+  return (
+    <div className="glass rounded-2xl px-5 py-4 space-y-3">
+      <div className="text-xs uppercase tracking-wide text-white/60 font-semibold">
+        Canceladas con revisión ({items.length})
+      </div>
+      <div className="space-y-3">
+        {items.map((c, i) => (
+          <div key={`${c.numero_contrato}-${i}`} className="rounded-xl border border-white/10 px-4 py-3 space-y-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className="font-semibold text-white text-xs tabular-nums">
+                {c.numero_contrato || "—"}
+              </span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {c.producto && (
+                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-white/10 text-white/70">
+                    {c.producto}
+                  </span>
+                )}
+                {c.gestion_supervisor_tmk && (
+                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-900/60 text-amber-200">
+                    {c.gestion_supervisor_tmk}
+                  </span>
+                )}
+                {c.estado_subsanacion && (
+                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-violet-900/60 text-violet-200">
+                    {c.estado_subsanacion}
+                  </span>
+                )}
+              </div>
+            </div>
+            {c.fecha_venta && (
+              <div className="text-[10px] text-white/40">Venta: {fmtFecha(c.fecha_venta)}</div>
+            )}
+            {c.causal_gestion && (
+              <div className="text-xs">
+                <span className="text-white/50 font-semibold">Motivo: </span>
+                <span className="text-white/75">{c.causal_gestion}</span>
+              </div>
+            )}
+            {c.observacion && (
+              <div className="text-xs">
+                <span className="text-white/50 font-semibold">Observación Kevin: </span>
+                <TextoLargo texto={c.observacion} />
+              </div>
+            )}
+            {c.resultado_re_auditoria && (
+              <div className="text-xs">
+                <span className="text-white/50 font-semibold">Re-auditoría: </span>
+                <span className="text-white/75">{c.resultado_re_auditoria}</span>
+                {c.reauditoria && <span className="text-white/50"> · {c.reauditoria}</span>}
+              </div>
+            )}
+            {c.observacion_re_auditoria && (
+              <div className="text-xs">
+                <span className="text-white/50 font-semibold">Obs. re-auditoría: </span>
+                <TextoLargo texto={c.observacion_re_auditoria} />
+              </div>
+            )}
+            {c.observaciones_reauditoria && (
+              <div className="text-xs">
+                <span className="text-white/50 font-semibold">Obs. subsanación: </span>
+                <TextoLargo texto={c.observaciones_reauditoria} />
+              </div>
+            )}
+            {(c.fecha_gestion || c.gestor) && (
+              <div className="text-[10px] text-white/40">
+                {c.fecha_gestion ? `Gestión: ${fmtFecha(c.fecha_gestion)}` : ""}
+                {c.fecha_gestion && c.gestor ? " · " : ""}
+                {c.gestor ? `Gestor: ${c.gestor}` : ""}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function MiResumenAsesor({ resumen, detalleDiaDia, billetera, canceladasRevision }) {
   const ventas = detalleDiaDia || [];
   const rs = ventas.filter((v) => etiquetaProducto(v.producto).corto === "RS");
 
@@ -397,7 +510,13 @@ export default function MiResumenAsesor({ resumen, detalleDiaDia, billetera }) {
         </div>
       )}
 
-      {ventas.length > 0 && <SeccionVentas ventas={ventas} />}
+      {ventas.length > 0 && (
+        <SeccionVentas
+          ventas={ventas}
+          canceladasContratos={new Set((canceladasRevision || []).map((c) => normContratoJs(c.numero_contrato)))}
+        />
+      )}
+      {canceladasRevision?.length > 0 && <SeccionCanceladas items={canceladasRevision} />}
     </div>
   );
 }

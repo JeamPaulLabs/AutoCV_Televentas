@@ -138,6 +138,7 @@ export default function App() {
             resumen={data.resumen}
             detalleDiaDia={data.detalle_dia_dia}
             billetera={data.billetera}
+            canceladasRevision={data.canceladas_revision}
           />
         )}
 
