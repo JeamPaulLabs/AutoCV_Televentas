@@ -24,20 +24,36 @@ ESTADOS_POSITIVOS = ("AUDITADA WEB", "ALTA TRANSACCIONAL")
 
 # Producto de la vista ilio.v_billetera_protegida. Billetera Protegida (BP)
 # cuenta en el acumulado del asesor -- decisión de negocio 2026-10-20: "billetera
-# se analiza con la meta" (mismo trato que Cuota Protegida, a diferencia de
-# Rueda Seguro, que se reporta aparte y nunca se suma). La identificación es por
-# producto porque es la señal que también sobrevive al snapshot de cierre_mensual.
+# se analiza con la meta" (mismo trato que Cuota Protegida). La identificación es
+# por producto porque es la señal que también sobrevive al snapshot de
+# cierre_mensual.
 PRODUCTO_BILLETERA = "BILLETERA PROTEGIDA"
+
+# Producto de la vista ilio.v_rueda_segura ('RUEDA SEGURO SBS'). También cuenta
+# en el acumulado del asesor: decisión de negocio 2026-10-20 ("a Camila y a
+# Gustavo también les cuentan RS"), que revierte la regla anterior de reportar RS
+# aparte (validación RS agosto 2026).
+PRODUCTO_RUEDA = "RUEDA SEGURO"
+
+
+def _normalizar_producto(df: pd.DataFrame) -> pd.Series:
+    return (
+        df["producto"].fillna("").astype(str).str.upper()
+        .str.replace(r"\s+", " ", regex=True).str.strip()
+    )
 
 
 def es_billetera(df: pd.DataFrame) -> pd.Series:
     """Máscara booleana de las filas de Billetera Protegida dentro de un df de
     ventas (columna 'producto')."""
-    prod = (
-        df["producto"].fillna("").astype(str).str.upper()
-        .str.replace(r"\s+", " ", regex=True).str.strip()
-    )
-    return prod == PRODUCTO_BILLETERA
+    return _normalizar_producto(df) == PRODUCTO_BILLETERA
+
+
+def es_rueda_seguro(df: pd.DataFrame) -> pd.Series:
+    """Máscara booleana de las filas de Rueda Seguro dentro de un df de ventas.
+    Se compara por prefijo porque el plan se concatenó al producto ('RUEDA SEGURO
+    SBS')."""
+    return _normalizar_producto(df).str.startswith(PRODUCTO_RUEDA)
 
 
 # id_poliza duplicados confirmados en Ilio: mismo asesor, mismo producto, mismo
@@ -116,14 +132,14 @@ def _params_periodo(periodo: dt.date, colectivo: str, fecha_inicio: dt.date) -> 
 def leer_televentas(periodo: dt.date, fecha_corte: dt.date | None = None) -> pd.DataFrame:
     """
     Trae las pólizas de Televentas de un periodo: Cuota Protegida + Billetera
-    Protegida (ambas cuentan en el acumulado del asesor; ver
-    leer_billetera_protegida).
+    Protegida + Rueda Seguro (las tres cuentan en el acumulado del asesor; ver
+    leer_billetera_protegida y leer_rueda_segura).
 
     Si el periodo YA fue cerrado por auditoría, lee el snapshot congelado en
     cierre_mensual (que desde el cierre en adelante ya incluye Billetera
-    Protegida). Si no, lee ilio.v_cuota_protegida y ilio.v_billetera_protegida
-    EN VIVO (estado actual, tal como esté hoy), aunque el mes calendario ya
-    haya terminado.
+    Protegida y Rueda Seguro). Si no, lee ilio.v_cuota_protegida,
+    ilio.v_billetera_protegida e ilio.v_rueda_segura EN VIVO (estado actual, tal
+    como esté hoy), aunque el mes calendario ya haya terminado.
     """
     cierre = periodo_esta_cerrado(periodo)
     if cierre:
@@ -153,9 +169,6 @@ def leer_televentas(periodo: dt.date, fecha_corte: dt.date | None = None) -> pd.
     # RENOVACION = renovación automática de póliza existente, no una venta
     # cantada por el asesor -- se excluye para conciliar con el reporte
     # manual del área (ver validación de julio 2026 vs archivo de Martha).
-    # Rueda Segura vive en ilio.v_rueda_segura, una vista aparte -- se reporta
-    # por separado (ver leer_rueda_segura) y no se mezcla con este acumulado
-    # de Cuota Protegida (ver validación RS agosto 2026, Breiner y Konny).
     # fecha_inicio evita que pólizas con colectivo del periodo pero fecha_venta
     # en el mes anterior (rezagos de digitación) aparezcan en el dashboard del
     # mes actual (ver ajuste de corte, sept 2026).
@@ -169,15 +182,21 @@ def leer_televentas(periodo: dt.date, fecha_corte: dt.date | None = None) -> pd.
     df = df[~df["id_poliza"].isin(DUPLICADOS_ILIO_CONOCIDOS)]
     df = _ultimo_estado_por_contrato(df)
 
-    # Billetera Protegida entra al mismo acumulado que Cuota Protegida (decisión
-    # 2026-10-20). Se concatena aquí, un solo punto, para que el CLI, la API, el
-    # caché de ventas_mes_actual y el snapshot de cierre_mensual la hereden todos
-    # sin duplicar lógica. No se filtra por asesor: cada quien ve lo suyo en la
+    # Billetera Protegida y Rueda Seguro entran al mismo acumulado que Cuota
+    # Protegida (decisiones de negocio 2026-10-20: "billetera se analiza con la
+    # meta" y "a Camila y a Gustavo también les cuentan RS"). Se concatenan aquí,
+    # un solo punto, para que el CLI, la API, el caché de ventas_mes_actual, el
+    # snapshot de cierre_mensual y el reporte HTML los hereden todos sin
+    # duplicar lógica. No se filtra por asesor: cada quien ve lo suyo en la
     # vista personal.
+    partes = [df]
     df_bp = leer_billetera_protegida(periodo, fecha_corte)
-    if df_bp.empty:
-        return df
-    return pd.concat([df, df_bp], ignore_index=True)
+    if not df_bp.empty:
+        partes.append(df_bp)
+    df_rs = leer_rueda_segura(periodo, fecha_corte)
+    if not df_rs.empty:
+        partes.append(df_rs)
+    return pd.concat(partes, ignore_index=True) if len(partes) > 1 else df
 
 
 def leer_billetera_protegida(periodo: dt.date, fecha_corte: dt.date | None = None) -> pd.DataFrame:
@@ -213,7 +232,13 @@ def leer_rueda_segura(periodo: dt.date, fecha_corte: dt.date | None = None) -> p
     """Trae las pólizas de Rueda Segura de Televentas de un periodo, en vivo
     desde ilio.v_rueda_segura (misma estructura que v_cuota_protegida, vista
     separada). A diferencia del Excel de auditoría RS (ver ruedas_seguro_repo),
-    esta fuente sí refleja el corte completo del mes porque viene de Ilio."""
+    esta fuente sí refleja el corte completo del mes porque viene de Ilio.
+
+    Cuenta en el acumulado del asesor (decisión de negocio 2026-10-20), así que
+    recibe el mismo último-estado-por-contrato que Cuota Protegida y Billetera
+    Protegida: Ilio crea un id_poliza nuevo cuando la venta avanza de estado y,
+    sin el ajuste, la misma venta se contaría dos veces (sept 2026: 119 filas
+    crudas -> 117 contratos)."""
     colectivo = _colectivo_de(periodo)
     fecha_inicio = periodo.replace(day=1)  # primer día del mes — filtro de corte inferior
     query = """
@@ -233,7 +258,8 @@ def leer_rueda_segura(periodo: dt.date, fecha_corte: dt.date | None = None) -> p
         params["fecha_corte"] = fecha_corte
 
     with get_conexion() as conn:
-        return pd.read_sql(query, conn, params=params)
+        df = pd.read_sql(query, conn, params=params)
+    return _ultimo_estado_por_contrato(df)
 
 
 def refrescar_ventas_mes_actual(periodo: dt.date, df_ventas: pd.DataFrame) -> None:
@@ -278,7 +304,8 @@ def cerrar_mes(periodo: dt.date, cerrado_por: str, observaciones: str | None = N
     """
     Declara el cierre de un periodo (llamado explícitamente cuando auditoría lo
     confirma, no automáticamente por calendario) y congela un snapshot de
-    ilio.v_cuota_protegida hacia cierre_mensual.
+    ilio.v_cuota_protegida + ilio.v_billetera_protegida + ilio.v_rueda_segura hacia
+    cierre_mensual (los tres productos cuentan en el acumulado).
     """
     if periodo_esta_cerrado(periodo):
         raise ValueError(f"El periodo {periodo} ya está cerrado.")

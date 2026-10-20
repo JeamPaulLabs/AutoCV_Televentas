@@ -258,11 +258,13 @@ def generar_dashboard(
     cerrado: bool,
     df_rs: pd.DataFrame | None = None,
 ) -> str:
-    # df_rs: pólizas de Rueda Segura (ilio.v_rueda_segura, mismo esquema que
-    # df_ventas) -- reporte separado de Cuota Protegida, nunca se suma al
-    # acumulado de "Como vamos por asesor" (ver validación RS agosto 2026).
-    # Billetera Protegida es al revés: ya viene dentro de df_ventas y SÍ cuenta
-    # en el acumulado (decisión de negocio 2026-10-20).
+    # df_rs: pólizas de Rueda Seguro (ilio.v_rueda_segura, mismo esquema que
+    # df_ventas) -- reporte separado de Cuota Protegida y Billetera Protegida,
+    # que sí cuentan en el acumulado de "Como vamos por asesor" (ver validación
+    # RS agosto 2026). Rueda Seguro también cuenta en el acumulado desde la
+    # decisión de negocio 2026-10-20 ("a Camila y a Gustavo también les cuentan
+    # RS"): viene dentro de df_ventas; esta sección es la auditoría por día y
+    # por asesor.
     meta_total = df_proyeccion["meta_mes"].sum()
     acumulado_total = df_proyeccion["acumulado"].sum()
     forecast_total = df_proyeccion["forecast"].sum()
@@ -300,9 +302,9 @@ def generar_dashboard(
         else None
     )
 
-    # Billetera Protegida: A DIFERENCIA de RS, estas ventas SÍ cuentan en el
-    # acumulado del asesor y en las altas del otrosí -- ya vienen dentro de
-    # df_ventas, aquí se separan solo para su resumen por día y por asesor.
+    # Billetera Protegida y Rueda Segura: ambas vienen dentro de df_ventas y
+    # SÍ cuentan en el acumulado del asesor (decisiones de negocio 2026-10-20).
+    # Aquí se separan solo para su resumen por día y por asesor.
     df_bp = df_ventas[es_billetera(df_ventas)]
     tabla_bp = (
         _tabla_conteo(
@@ -475,7 +477,7 @@ def generar_dashboard(
   </div>
 
   {f'''
-  <h2>Rueda Seguro — Auditoría de ventas (RS, no suma al acumulado)</h2>
+  <h2>Rueda Seguro — Auditoría de ventas (RS)</h2>
   <div class="grid-2">
     <div>{tabla_rs}</div>
     <div>{tabla_rs_asesor}</div>
@@ -550,7 +552,7 @@ def generar_dashboard(
   </div>
 
   {f'''
-  <h2>Rueda Seguro — Auditoría de ventas (RS, no suma al acumulado)</h2>
+  <h2>Rueda Seguro — Auditoría de ventas (RS)</h2>
   <div class="grid-2">
     <div>{tabla_rs}</div>
     <div>{tabla_rs_asesor}</div>
@@ -568,7 +570,7 @@ def generar_dashboard(
 </main>
 <footer>
   Generado automáticamente por 31_AutoCV_Televentas — fuente: ilio.v_cuota_protegida + ilio.v_billetera_protegida (DataCenter_Vanti), estrategia Televentas.
-  El acumulado de "Como vamos por asesor" incluye todos los estados (AUDITADA WEB, ALTA TRANSACCIONAL, DIGITADA WEB, CANCELADA) de Cuota Protegida y Billetera Protegida. Rueda Seguro se reporta aparte y no se suma.
+  El acumulado de "Como vamos por asesor" incluye todos los estados (AUDITADA WEB, ALTA TRANSACCIONAL, DIGITADA WEB, CANCELADA) de Cuota Protegida, Billetera Protegida y Rueda Seguro. Rueda Seguro se reporta aparte en su sección de auditoría (mismo acumulado).
 </footer>
 <script>
 function mostrarTab(ev, id) {{

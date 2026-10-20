@@ -92,13 +92,14 @@ def _conteo_por_asesor(df: pd.DataFrame) -> pd.DataFrame:
 def resumen_rs_por_dia(df_rs: pd.DataFrame) -> pd.DataFrame:
     """Ventas de Rueda Segura por día (Ilio v_rueda_segura) -- reemplaza al
     resumen basado en el Excel de auditoría OneDrive, que se queda corto
-    (no alcanza a reflejar los últimos días del corte)."""
+    (no alcanza a reflejar los últimos días del corte). También cuenta en el
+    acumulado del asesor (decisión de negocio 2026-10-20)."""
     return _conteo_por_dia(df_rs)
 
 
 def resumen_rs_por_asesor(df_rs: pd.DataFrame) -> pd.DataFrame:
-    """Ventas de Rueda Segura por asesor (Ilio v_rueda_segura) -- separado
-    del acumulado de Cuota Protegida."""
+    """Ventas de Rueda Segura por asesor (Ilio v_rueda_segura) -- también
+    cuenta en el acumulado del asesor (decisión de negocio 2026-10-20)."""
     return _conteo_por_asesor(df_rs)
 
 

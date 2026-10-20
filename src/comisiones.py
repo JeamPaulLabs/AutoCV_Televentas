@@ -61,9 +61,14 @@ def cargar_esquema(periodo: dt.date) -> dict | None:
 
 def estado_otrosi(periodo: dt.date, *dfs_ventas: pd.DataFrame) -> dict | None:
     """Reglas del otrosí y avance del equipo hacia la condición general:
-    altas positivas (Cuota Protegida + Billetera Protegida + Rueda Segura)
-    contra la meta de equipo. Billetera Protegida ya viene dentro del df de
-    ventas consolidado (ver ilio_repo.leer_televentas), así que cuenta sola."""
+    altas positivas (Cuota Protegida + Billetera Protegida + Rueda Seguro)
+    contra la meta de equipo.
+
+    Los tres productos viven dentro del df de ventas consolidado (ver
+    ilio_repo.leer_televentas), así que el llamado normal es
+    `estado_otrosi(periodo, df_ventas)` y el total sale de un solo df. Si se
+    pasa además un df con las pólizas RS (vista de auditoría), hay que quitar
+    esas filas del df consolidado para no contarlas dos veces."""
     esquema = cargar_esquema(periodo)
     if esquema is None:
         return None

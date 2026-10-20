@@ -18,9 +18,10 @@ function semaforo(pctCumpl, pctCumplIdeal) {
  * facturación ni valores en pesos -- ver backend/app/routers/como_vamos.py
  * (rama "vista personal" del endpoint /dashboard).
  *
- * Cuota Protegida y Billetera Protegida vienen JUNTAS en detalleDiaDia y
- * detalleEstado (BP cuenta en el acumulado y en el % de cumplimiento); Rueda
- * Seguro va en su propia sección porque nunca se suma a la meta. */
+ * Las tres productos (Cuota Protegida, Billetera Protegida y Rueda Seguro)
+ * viven juntos en detalleDiaDia y se muestran en un solo bloque unificado; cada
+ * fila se identifica con su producto (CP / BP / RS). Billetera y Rueda Seguro
+ * llevan su tarjeta destacada cuando el asesor las tiene. */
 const BADGE_ESTADO = {
   "AUDITADA WEB": "bg-emerald-900 text-emerald-200",
   "ALTA TRANSACCIONAL": "bg-emerald-900 text-emerald-200",
@@ -29,6 +30,19 @@ const BADGE_ESTADO = {
 };
 const ESTADOS_ALTA = ["AUDITADA WEB", "ALTA TRANSACCIONAL"];
 const BADGE_ESTADO_DEFAULT = "bg-white/15 text-white/80";
+
+const BADGE_PRODUCTO = {
+  CP: "bg-emerald-900/50 text-emerald-200 border border-emerald-700/40",
+  BP: "bg-sky-900/50 text-sky-200 border border-sky-700/40",
+  RS: "bg-violet-900/50 text-violet-200 border border-violet-700/40",
+};
+
+function etiquetaProducto(producto) {
+  const p = (producto || "").toString().toUpperCase();
+  if (p.includes("BILLETERA")) return { corto: "BP", nombre: "Billetera Protegida" };
+  if (p.includes("RUEDA")) return { corto: "RS", nombre: "Rueda Seguro" };
+  return { corto: "CP", nombre: "Cuota Protegida" };
+}
 
 function fmtFecha(iso) {
   if (!iso) return "—";
@@ -76,25 +90,43 @@ function contarPorEstado(ventas) {
   });
 }
 
-/** Sección de un producto: "Pólizas por estado" (clicables para filtrar) a la
- * izquierda y "Día a día" con los contratos a la derecha. Cada sección maneja
- * su propio filtro y su propio popup, para que Cuota Protegida + Billetera
- * Protegida y Rueda Seguro se filtren sin pisarse. */
-function SeccionProducto({ titulo, ventas }) {
+/** Cuántas cuentas del conjunto caen en cada producto (CP / RS / BP). */
+function contarPorProducto(ventas) {
+  const conteo = new Map();
+  for (const v of ventas) {
+    const { corto } = etiquetaProducto(v.producto);
+    conteo.set(corto, (conteo.get(corto) || 0) + 1);
+  }
+  // Orden estable: CP, RS, BP.
+  const orden = ["CP", "RS", "BP"];
+  return [...conteo.entries()].sort((a, b) => orden.indexOf(a[0]) - orden.indexOf(b[0]));
+}
+
+/** Sección unificada: "Pólizas por estado" (clicables para filtrar) a la
+ * izquierda y "Día a día" con los contratos a la derecha. Un solo bloque para
+ * todos los productos; cada fila se identifica con CP / RS / BP. */
+function SeccionVentas({ ventas }) {
   const [filtroEstado, setFiltroEstado] = useState(null);
+  const [filtroProducto, setFiltroProducto] = useState(null);
   const [popup, setPopup] = useState(null);
 
   const estados = contarPorEstado(ventas);
+  const productos = contarPorProducto(ventas);
   const total = ventas.length;
-  const ventasFiltradas = filtroEstado
-    ? ventas.filter((v) => (v.estado || "SIN ESTADO") === filtroEstado)
-    : ventas;
+  const ventasFiltradas = ventas.filter((v) => {
+    if (filtroEstado && (v.estado || "SIN ESTADO") !== filtroEstado) return false;
+    if (filtroProducto) {
+      const { corto } = etiquetaProducto(v.producto);
+      if (corto !== filtroProducto) return false;
+    }
+    return true;
+  });
 
   return (
     <div className="grid lg:grid-cols-[minmax(0,1fr)_1.3fr] gap-4 items-start">
       <div className="glass rounded-2xl px-5 py-4">
         <div className="text-xs uppercase tracking-wide text-white/60 font-semibold mb-3">
-          Pólizas por estado — {titulo}
+          Pólizas por estado
         </div>
         <div className="space-y-2">
           {estados.map(([estado, cantidad]) => {
@@ -133,23 +165,64 @@ function SeccionProducto({ titulo, ventas }) {
               </div>
             );
           })}
+          {productos.length > 1 && (
+            <div className="flex items-center gap-1.5 pt-2 mt-2 border-t border-white/10 flex-wrap">
+              <span className="text-[10px] uppercase tracking-wide text-white/40 font-semibold mr-1">
+                Producto:
+              </span>
+              {productos.map(([corto, cantidad]) => {
+                const activo = filtroProducto === corto;
+                return (
+                  <button
+                    key={corto}
+                    type="button"
+                    onClick={() => setFiltroProducto(activo ? null : corto)}
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-semibold cursor-pointer transition-colors ${BADGE_PRODUCTO[corto]} ${activo ? "ring-1 ring-white/40" : "opacity-75 hover:opacity-100"}`}
+                    title={etiquetaProducto(corto === "CP" ? "Cuota Protegida" : corto === "RS" ? "Rueda Seguro" : "Billetera Protegida").nombre}
+                  >
+                    {cantidad} {corto}
+                  </button>
+                );
+              })}
+              {filtroProducto && (
+                <button
+                  type="button"
+                  onClick={() => setFiltroProducto(null)}
+                  className="text-[10px] text-white/50 hover:text-white ml-1"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       <div className="glass rounded-2xl px-5 py-4 lg:sticky lg:top-[76px]">
         <div className="flex items-center justify-between mb-3">
           <div className="text-xs uppercase tracking-wide text-white/60 font-semibold">
-            Día a día — {titulo}
+            Día a día
           </div>
-          {filtroEstado && (
-            <button
-              type="button"
-              onClick={() => setFiltroEstado(null)}
-              className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold ${BADGE_ESTADO[filtroEstado] || BADGE_ESTADO_DEFAULT}`}
-            >
-              {filtroEstado} ✕
-            </button>
-          )}
+          <div className="flex items-center gap-1.5">
+            {filtroProducto && (
+              <button
+                type="button"
+                onClick={() => setFiltroProducto(null)}
+                className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold ${BADGE_PRODUCTO[filtroProducto]}`}
+              >
+                {filtroProducto} ✕
+              </button>
+            )}
+            {filtroEstado && (
+              <button
+                type="button"
+                onClick={() => setFiltroEstado(null)}
+                className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold ${BADGE_ESTADO[filtroEstado] || BADGE_ESTADO_DEFAULT}`}
+              >
+                {filtroEstado} ✕
+              </button>
+            )}
+          </div>
         </div>
         <div className="space-y-1.5 max-h-[calc(100vh-220px)] overflow-auto pr-1">
           {agruparPorDia(ventasFiltradas)
@@ -160,6 +233,17 @@ function SeccionProducto({ titulo, ventas }) {
                   {fmtFecha(fecha)} <span className="text-white/40 font-normal">· {items.length}</span>
                 </span>
                 <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                  {contarPorProducto(items).map(([corto, cantidad]) => (
+                    <button
+                      key={`p-${corto}`}
+                      type="button"
+                      onClick={() => setFiltroProducto(filtroProducto === corto ? null : corto)}
+                      className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold cursor-pointer hover:brightness-125 transition text-center min-w-[40px] ${BADGE_PRODUCTO[corto]}`}
+                      title={etiquetaProducto(corto === "CP" ? "Cuota Protegida" : corto === "RS" ? "Rueda Seguro" : "Billetera Protegida").nombre}
+                    >
+                      {cantidad} {corto}
+                    </button>
+                  ))}
                   {contarPorEstado(items).map(([estado, cantidad]) => (
                     <button
                       key={estado}
@@ -179,6 +263,9 @@ function SeccionProducto({ titulo, ventas }) {
                 </div>
               </div>
             ))}
+        </div>
+        <div className="mt-2 text-[10px] text-white/40">
+          CP = Cuota Protegida · RS = Rueda Seguro · BP = Billetera Protegida
         </div>
       </div>
 
@@ -218,12 +305,18 @@ function SeccionProducto({ titulo, ventas }) {
                     </div>
                   )}
                   <div className="space-y-2">
-                    {items.map((v, i) => (
-                      <div key={`${v.contrato}-${i}`} className="flex items-center justify-between text-xs border-t border-white/10 pt-2 first:border-t-0 first:pt-0">
-                        <span className="text-white font-semibold tabular-nums">{v.contrato || "—"}</span>
-                        <span className="text-white/60">{v.producto || "—"}</span>
-                      </div>
-                    ))}
+                    {items.map((v, i) => {
+                      const { corto } = etiquetaProducto(v.producto);
+                      return (
+                        <div key={`${v.contrato}-${i}`} className="flex items-center justify-between text-xs border-t border-white/10 pt-2 first:border-t-0 first:pt-0">
+                          <span className="text-white font-semibold tabular-nums">{v.contrato || "—"}</span>
+                          <span className="flex items-center gap-2">
+                            <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${BADGE_PRODUCTO[corto]}`}>{corto}</span>
+                            <span className="text-white/60">{v.producto || "—"}</span>
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ))}
@@ -235,11 +328,11 @@ function SeccionProducto({ titulo, ventas }) {
   );
 }
 
-export default function MiResumenAsesor({ resumen, detalleDiaDia, ruedaSegura, billetera }) {
-  const rs = ruedaSegura || [];
-  const detalle = detalleDiaDia || [];
+export default function MiResumenAsesor({ resumen, detalleDiaDia, billetera }) {
+  const ventas = detalleDiaDia || [];
+  const rs = ventas.filter((v) => etiquetaProducto(v.producto).corto === "RS");
 
-  if (!resumen && rs.length === 0) {
+  if (!resumen && ventas.length === 0) {
     return (
       <div className="glass rounded-2xl px-5 py-6 text-sm text-white/60">
         Todavía no tienes ventas registradas este mes.
@@ -247,11 +340,7 @@ export default function MiResumenAsesor({ resumen, detalleDiaDia, ruedaSegura, b
     );
   }
 
-  // Rueda Seguro va aparte (nunca suma a la meta). Si el asesor no tiene
-  // ventas de Cuota Protegida/Billetera Protegida, su pantalla es solo RS.
-  const soloRS = rs.length > 0 && detalle.length === 0;
-  const conMeta = !!resumen && !soloRS;
-
+  const conMeta = !!resumen;
   const sinMeta = conMeta && resumen.categoria === "SIN META";
   const color = !conMeta || sinMeta ? WARNING : semaforo(resumen.pct_cumpl_acumulado, resumen.pct_cump_ideal);
   const avance = conMeta ? Math.min(resumen.pct_cumpl_acumulado * 100, 100) : 0;
@@ -278,6 +367,13 @@ export default function MiResumenAsesor({ resumen, detalleDiaDia, ruedaSegura, b
                 sub={`${fmtNumero(billetera.altas)} altas del mes`}
               />
             )}
+            {rs.length > 0 && (
+              <StatTile
+                label="Rueda Seguro"
+                value={fmtNumero(rs.length)}
+                sub={`${fmtNumero(rs.filter((v) => ESTADOS_ALTA.includes(v.estado)).length)} altas del mes`}
+              />
+            )}
           </div>
 
           <div className="glass rounded-2xl px-5 py-4">
@@ -301,21 +397,7 @@ export default function MiResumenAsesor({ resumen, detalleDiaDia, ruedaSegura, b
         </div>
       )}
 
-      {soloRS && (
-        <div className="grid grid-cols-2 gap-2.5">
-          <StatTile label="Ventas Rueda Seguro" value={fmtNumero(rs.length)} destacado />
-          <StatTile
-            label="Altas del mes"
-            value={fmtNumero(rs.filter((v) => ESTADOS_ALTA.includes(v.estado)).length)}
-          />
-        </div>
-      )}
-
-      {detalle.length > 0 && (
-        <SeccionProducto titulo="Cuota Protegida y Billetera Protegida" ventas={detalle} />
-      )}
-
-      {rs.length > 0 && <SeccionProducto titulo="Rueda Seguro" ventas={rs} />}
+      {ventas.length > 0 && <SeccionVentas ventas={ventas} />}
     </div>
   );
 }

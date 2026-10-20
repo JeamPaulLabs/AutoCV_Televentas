@@ -3,9 +3,9 @@
 No duplica lógica de negocio: reutiliza exactamente el mismo pipeline de
 cálculo que usa el generador HTML estático (src/), solo que aquí se devuelve
 como JSON en vez de un archivo HTML. Fuente de datos: ilio.v_cuota_protegida +
-ilio.v_billetera_protegida (mes en curso, en vivo; ambas cuentan en el
-acumulado del asesor) o como_vamos_televentas.cierre_mensual (mes cerrado).
-Rueda Seguro se reporta aparte (ilio.v_rueda_segura) y nunca se suma.
+ilio.v_billetera_protegida + ilio.v_rueda_segura (mes en curso, en vivo; las
+tres cuentan en el acumulado del asesor) o como_vamos_televentas.cierre_mensual
+(mes cerrado).
 """
 from __future__ import annotations
 
@@ -22,6 +22,7 @@ from src.exclusiones import cargar_excluidos
 from src.ilio_repo import (
     ESTADOS_POSITIVOS,
     es_billetera,
+    es_rueda_seguro,
     leer_rueda_segura,
     leer_televentas,
     periodo_esta_cerrado,
@@ -179,7 +180,10 @@ def dashboard(
         "fecha_corte": cal.fecha_corte.isoformat(),
         "cerrado": cerrado,
         "actualizado_en": actualizado_en,
-        "otrosi": estado_otrosi(periodo_d, df_ventas, df_rs_ilio),
+        # df_ventas ya trae Rueda Seguro (cuenta en el acumulado), así que se le
+        # quitan esas filas para no contarlas dos veces: el otrosí las recibe
+        # aparte, como siempre (ver comisiones.estado_otrosi).
+        "otrosi": estado_otrosi(periodo_d, df_ventas[~es_rueda_seguro(df_ventas)], df_rs_ilio),
         "calendario": {
             "dias_colectivo": cal.dias_colectivo,
             "dias_laborados": cal.dias_laborados,
@@ -222,8 +226,9 @@ def dashboard(
         raise HTTPException(403, "Tu usuario no está vinculado a un asesor de televentas")
 
     # Rueda Seguro propia: mismo formato que las ventas de Cuota Protegida
-    # (contrato, producto, estado) para mostrar la misma vista que los demás
-    # comerciales, pero con sus ventas de RS.
+    # (contrato, producto, estado). Ya no se arma la vista aparte: RS vive dentro
+    # de df_ventas y detalle_dia_dia la trae. Se conserva este armado solo para
+    # el caso de un asesor sin fila en la proyección (ver más abajo).
     mi_rs = []
     if not df_rs.empty:
         rs_mias = df_rs[df_rs["asesor"].map(_norm_nombre) == mi_alias_norm].sort_values(
@@ -242,9 +247,10 @@ def dashboard(
     mask_mio = df_proyeccion["asesor"].map(_norm_nombre) == mi_alias_norm
     mi_fila = df_proyeccion[mask_mio]
     if mi_fila.empty:
-        # Sin ventas de Cuota Protegida ni Billetera Protegida: solo puede
-        # tener Rueda Seguro (BP ya viene dentro de df_ventas, así que si no
-        # aparece aquí, no la vendió).
+        # Sin fila en la proyección: no vendió nada este mes, o vendió pero no
+        # entró al acumulado (asesor excluido del tablero). Si tiene pólizas RS
+        # en el Excel de auditoría que no llegaron a Ilio, se las muestran igual,
+        # sin bloque de meta (no hay nada que proyectar).
         if not mi_rs:
             return {**base, "vista": "personal", "disponible": False}
         return {
@@ -253,8 +259,7 @@ def dashboard(
             "disponible": True,
             "resumen": None,
             "detalle_estado": None,
-            "detalle_dia_dia": [],
-            "rueda_segura": mi_rs,
+            "detalle_dia_dia": mi_rs,
             "billetera": None,
         }
 
@@ -266,9 +271,10 @@ def dashboard(
     resumen = df_records(mi_fila)[0]
     resumen.pop("base_pago_proyectada", None)
 
-    # Día a día: cada venta propia con su contrato y estado -- lo que el
-    # asesor pidió para poder revisar puntualmente cada cuenta, no solo el
-    # acumulado. Sin tarifa/facturación (ver arriba).
+    # Día a día: cada venta propia con su contrato, producto y estado -- lo que
+    # el asesor pidió para poder revisar puntualmente cada cuenta, no solo el
+    # acumulado. Cuenta Protegida, Billetera Protegida y Rueda Seguro juntas
+    # (las tres son ventas del asesor). Sin tarifa/facturación (ver arriba).
     mask_ventas_mias = df_ventas["asesor"].map(_norm_nombre) == mi_alias_norm
     mis_ventas = df_ventas[mask_ventas_mias].sort_values("fecha_venta", ascending=False)
     detalle_dia_dia = [
@@ -299,7 +305,6 @@ def dashboard(
         "resumen": resumen,
         "detalle_estado": df_records(mi_detalle)[0] if not mi_detalle.empty else None,
         "detalle_dia_dia": detalle_dia_dia,
-        "rueda_segura": mi_rs,
         "billetera": mi_billetera,
     }
 

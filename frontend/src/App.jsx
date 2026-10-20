@@ -137,7 +137,6 @@ export default function App() {
           <MiResumenAsesor
             resumen={data.resumen}
             detalleDiaDia={data.detalle_dia_dia}
-            ruedaSegura={data.rueda_segura}
             billetera={data.billetera}
           />
         )}
@@ -330,7 +329,7 @@ export default function App() {
 
       <footer className="px-4 md:px-6 py-2.5 text-[10px] text-white/40 border-t border-white/10 max-w-[1900px] mx-auto">
         Fuente: Ilio, estrategia Televentas · incluye Auditada Web, Alta Transaccional, Digitada Web y Cancelada ·
-        Cuota Protegida y Billetera Protegida cuentan en el acumulado; Rueda Seguro se reporta aparte.
+        Cuota Protegida, Billetera Protegida y Rueda Seguro cuentan en el acumulado.
       </footer>
     </div>
   );
