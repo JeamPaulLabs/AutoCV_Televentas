@@ -328,12 +328,25 @@ function SeccionVentas({ ventas, canceladas }) {
                   <div className="space-y-2">
                     {items.map((v, i) => {
                       const { corto } = etiquetaProducto(v.producto);
+                      const canceladaDeContrato = canceladasArr.find(
+                        (c) => normContratoJs(c.numero_contrato) === normContratoJs(v.contrato)
+                      );
                       return (
                         <div key={`${v.contrato}-${i}`} className="flex items-center justify-between text-xs border-t border-white/10 pt-2 first:border-t-0 first:pt-0">
                           <span className="text-white font-semibold tabular-nums">{v.contrato || "—"}</span>
                           <span className="flex items-center gap-2">
                             <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${BADGE_PRODUCTO[corto]}`}>{corto}</span>
                             <span className="text-white/60">{v.producto || "—"}</span>
+                            {canceladaDeContrato && (
+                              <button
+                                type="button"
+                                onClick={() => setPopupCanceladas([canceladaDeContrato])}
+                                className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-red-900/60 text-red-200 cursor-pointer hover:brightness-125 transition"
+                                title="Ver observación de esta cancelada"
+                              >
+                                📋 revisión
+                              </button>
+                            )}
                           </span>
                         </div>
                       );
