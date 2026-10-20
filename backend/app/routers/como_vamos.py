@@ -223,7 +223,7 @@ def dashboard(
     # asesores -- solo la operación de ventas (conteos) de quien consultó.
     mi_alias_norm = _mi_alias_norm(int(current["sub"]))
     if not mi_alias_norm:
-        raise HTTPException(403, "Tu usuario no está vinculado a un asesor de televentas")
+        raise HTTPException(403, f"Tu usuario no está vinculado a un asesor de televentas (id_usuario={current.get('sub')})")
 
     # Rueda Seguro propia: mismo formato que las ventas de Cuota Protegida
     # (contrato, producto, estado). Ya no se arma la vista aparte: RS vive dentro

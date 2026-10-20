@@ -33,15 +33,29 @@ const BADGE_ESTADO_DEFAULT = "bg-white/15 text-white/80";
 
 const BADGE_PRODUCTO = {
   CP: "bg-emerald-900/50 text-emerald-200 border border-emerald-700/40",
+  CV: "bg-teal-900/50 text-teal-200 border border-teal-700/40",
   BP: "bg-sky-900/50 text-sky-200 border border-sky-700/40",
   RS: "bg-violet-900/50 text-violet-200 border border-violet-700/40",
+};
+
+const NOMBRE_PRODUCTO = {
+  CP: "Cuota Protegida",
+  CV: "Combo Vida",
+  BP: "Billetera Protegida",
+  RS: "Rueda Seguro",
 };
 
 function etiquetaProducto(producto) {
   const p = (producto || "").toString().toUpperCase();
   if (p.includes("BILLETERA")) return { corto: "BP", nombre: "Billetera Protegida" };
   if (p.includes("RUEDA")) return { corto: "RS", nombre: "Rueda Seguro" };
+  if (p.includes("COMBO")) return { corto: "CV", nombre: "Combo Vida" };
+  if (p.includes("CUOTA")) return { corto: "CP", nombre: "Cuota Protegida" };
   return { corto: "CP", nombre: "Cuota Protegida" };
+}
+
+function nombreProducto(corto) {
+  return NOMBRE_PRODUCTO[corto] || corto;
 }
 
 function normContratoJs(v) {
@@ -103,8 +117,8 @@ function contarPorProducto(ventas) {
     const { corto } = etiquetaProducto(v.producto);
     conteo.set(corto, (conteo.get(corto) || 0) + 1);
   }
-  // Orden estable: CP, RS, BP.
-  const orden = ["CP", "RS", "BP"];
+  // Orden estable: CP, CV, RS, BP.
+  const orden = ["CP", "CV", "RS", "BP"];
   return [...conteo.entries()].sort((a, b) => orden.indexOf(a[0]) - orden.indexOf(b[0]));
 }
 
@@ -189,7 +203,7 @@ function SeccionVentas({ ventas, canceladas }) {
                     type="button"
                     onClick={() => setFiltroProducto(activo ? null : corto)}
                     className={`px-2 py-0.5 rounded-full text-[10px] font-semibold cursor-pointer transition-colors ${BADGE_PRODUCTO[corto]} ${activo ? "ring-1 ring-white/40" : "opacity-75 hover:opacity-100"}`}
-                    title={etiquetaProducto(corto === "CP" ? "Cuota Protegida" : corto === "RS" ? "Rueda Seguro" : "Billetera Protegida").nombre}
+                    title={nombreProducto(corto)}
                   >
                     {cantidad} {corto}
                   </button>
@@ -260,7 +274,7 @@ function SeccionVentas({ ventas, canceladas }) {
                       type="button"
                       onClick={() => setFiltroProducto(filtroProducto === corto ? null : corto)}
                       className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold cursor-pointer hover:brightness-125 transition text-center min-w-[40px] ${BADGE_PRODUCTO[corto]}`}
-                      title={etiquetaProducto(corto === "CP" ? "Cuota Protegida" : corto === "RS" ? "Rueda Seguro" : "Billetera Protegida").nombre}
+                      title={nombreProducto(corto)}
                     >
                       {cantidad} {corto}
                     </button>
@@ -286,7 +300,7 @@ function SeccionVentas({ ventas, canceladas }) {
             ))}
         </div>
         <div className="mt-2 text-[10px] text-white/40">
-          CP = Cuota Protegida · RS = Rueda Seguro · BP = Billetera Protegida
+          CP = Cuota Protegida · CV = Combo Vida · RS = Rueda Seguro · BP = Billetera Protegida
         </div>
       </div>
 
