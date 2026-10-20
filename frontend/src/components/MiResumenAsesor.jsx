@@ -33,14 +33,14 @@ const BADGE_ESTADO_DEFAULT = "bg-white/15 text-white/80";
 
 const BADGE_PRODUCTO = {
   CP: "bg-emerald-900/50 text-emerald-200 border border-emerald-700/40",
-  CV: "bg-teal-900/50 text-teal-200 border border-teal-700/40",
+  PCV: "bg-teal-900/50 text-teal-200 border border-teal-700/40",
   BP: "bg-sky-900/50 text-sky-200 border border-sky-700/40",
   RS: "bg-violet-900/50 text-violet-200 border border-violet-700/40",
 };
 
 const NOMBRE_PRODUCTO = {
   CP: "Cuota Protegida",
-  CV: "Combo Vida",
+  PCV: "Plan Combo Vida",
   BP: "Billetera Protegida",
   RS: "Rueda Seguro",
 };
@@ -49,7 +49,7 @@ function etiquetaProducto(producto) {
   const p = (producto || "").toString().toUpperCase();
   if (p.includes("BILLETERA")) return { corto: "BP", nombre: "Billetera Protegida" };
   if (p.includes("RUEDA")) return { corto: "RS", nombre: "Rueda Seguro" };
-  if (p.includes("COMBO")) return { corto: "CV", nombre: "Combo Vida" };
+  if (p.includes("COMBO")) return { corto: "PCV", nombre: "Plan Combo Vida" };
   if (p.includes("CUOTA")) return { corto: "CP", nombre: "Cuota Protegida" };
   return { corto: "CP", nombre: "Cuota Protegida" };
 }
@@ -117,8 +117,8 @@ function contarPorProducto(ventas) {
     const { corto } = etiquetaProducto(v.producto);
     conteo.set(corto, (conteo.get(corto) || 0) + 1);
   }
-  // Orden estable: CP, CV, RS, BP.
-  const orden = ["CP", "CV", "RS", "BP"];
+  // Orden estable: CP, PCV, RS, BP.
+  const orden = ["CP", "PCV", "RS", "BP"];
   return [...conteo.entries()].sort((a, b) => orden.indexOf(a[0]) - orden.indexOf(b[0]));
 }
 
@@ -300,7 +300,7 @@ function SeccionVentas({ ventas, canceladas }) {
             ))}
         </div>
         <div className="mt-2 text-[10px] text-white/40">
-          CP = Cuota Protegida · CV = Combo Vida · RS = Rueda Seguro · BP = Billetera Protegida
+          CP = Cuota Protegida · PCV = Plan Combo Vida · RS = Rueda Seguro · BP = Billetera Protegida
         </div>
       </div>
 
