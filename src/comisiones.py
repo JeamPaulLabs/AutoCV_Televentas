@@ -61,7 +61,9 @@ def cargar_esquema(periodo: dt.date) -> dict | None:
 
 def estado_otrosi(periodo: dt.date, *dfs_ventas: pd.DataFrame) -> dict | None:
     """Reglas del otrosí y avance del equipo hacia la condición general:
-    altas positivas (Cuota Protegida + Rueda Segura) contra la meta de equipo."""
+    altas positivas (Cuota Protegida + Billetera Protegida + Rueda Segura)
+    contra la meta de equipo. Billetera Protegida ya viene dentro del df de
+    ventas consolidado (ver ilio_repo.leer_televentas), así que cuenta sola."""
     esquema = cargar_esquema(periodo)
     if esquema is None:
         return None

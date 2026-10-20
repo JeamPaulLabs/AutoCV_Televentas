@@ -2,8 +2,10 @@
 
 No duplica lógica de negocio: reutiliza exactamente el mismo pipeline de
 cálculo que usa el generador HTML estático (src/), solo que aquí se devuelve
-como JSON en vez de un archivo HTML. Fuente de datos: ilio.v_cuota_protegida
-(mes en curso, en vivo) o como_vamos_televentas.cierre_mensual (mes cerrado).
+como JSON en vez de un archivo HTML. Fuente de datos: ilio.v_cuota_protegida +
+ilio.v_billetera_protegida (mes en curso, en vivo; ambas cuentan en el
+acumulado del asesor) o como_vamos_televentas.cierre_mensual (mes cerrado).
+Rueda Seguro se reporta aparte (ilio.v_rueda_segura) y nunca se suma.
 """
 from __future__ import annotations
 
@@ -18,6 +20,8 @@ from src.calendario import Calendario
 from src.db import get_conexion
 from src.exclusiones import cargar_excluidos
 from src.ilio_repo import (
+    ESTADOS_POSITIVOS,
+    es_billetera,
     leer_rueda_segura,
     leer_televentas,
     periodo_esta_cerrado,
@@ -28,6 +32,8 @@ from src.metas_repo import asesores_sin_meta, leer_metas
 from src.pivote import (
     kpis_facturacion,
     pivote_asesor_estado,
+    resumen_bp_por_asesor,
+    resumen_bp_por_dia,
     resumen_por_dia,
     resumen_por_estado,
     resumen_por_gasera,
@@ -148,6 +154,15 @@ def dashboard(
     ) if not df_rs.empty else df_rs
     tabla_rs_asesor = resumen_rs_por_asesor(df_rs) if not df_rs.empty else df_rs
 
+    # Billetera Protegida ya viene dentro de df_ventas (cuenta en el acumulado
+    # del asesor, en las tablas del equipo y en las altas del otrosí) -- aquí
+    # se separa solo para su propio resumen por día y por asesor.
+    df_bp = df_ventas[es_billetera(df_ventas)]
+    tabla_bp_dias = resumen_bp_por_dia(df_bp).assign(
+        fecha_venta=lambda d: d["fecha_venta"].astype(str)
+    )
+    tabla_bp_asesor = resumen_bp_por_asesor(df_bp)
+
     corte_ilio = ultima_actualizacion_ilio()
     # ilio.ejecuciones.finalizado_en es timestamp SIN zona horaria pero
     # guardado en UTC (reloj del servidor) -- si se manda tal cual, el
@@ -194,6 +209,10 @@ def dashboard(
                 "tabla_dias": df_records(tabla_rs_dias),
                 "tabla_asesor": df_records(tabla_rs_asesor),
             },
+            "billetera": {
+                "tabla_dias": df_records(tabla_bp_dias),
+                "tabla_asesor": df_records(tabla_bp_asesor),
+            },
         }
 
     # Vista personal: nada de facturación, tarifas ni datos de otros
@@ -223,6 +242,9 @@ def dashboard(
     mask_mio = df_proyeccion["asesor"].map(_norm_nombre) == mi_alias_norm
     mi_fila = df_proyeccion[mask_mio]
     if mi_fila.empty:
+        # Sin ventas de Cuota Protegida ni Billetera Protegida: solo puede
+        # tener Rueda Seguro (BP ya viene dentro de df_ventas, así que si no
+        # aparece aquí, no la vendió).
         if not mi_rs:
             return {**base, "vista": "personal", "disponible": False}
         return {
@@ -233,6 +255,7 @@ def dashboard(
             "detalle_estado": None,
             "detalle_dia_dia": [],
             "rueda_segura": mi_rs,
+            "billetera": None,
         }
 
     mask_pivote = df_pivote["asesor"].map(_norm_nombre) == mi_alias_norm
@@ -258,6 +281,17 @@ def dashboard(
         for r in mis_ventas.itertuples(index=False)
     ]
 
+    # Billetera Protegida propia: ya está dentro de detalle_dia_dia y
+    # detalle_estado (cuenta en su acumulado y en su % de cumplimiento); se
+    # manda aparte solo para la tarjeta destacada de la pantalla personal.
+    mis_bp = mis_ventas[es_billetera(mis_ventas)]
+    mi_billetera = None
+    if not mis_bp.empty:
+        mi_billetera = {
+            "total": int(len(mis_bp)),
+            "altas": int(mis_bp["nombre_estado"].isin(ESTADOS_POSITIVOS).sum()),
+        }
+
     return {
         **base,
         "vista": "personal",
@@ -266,6 +300,7 @@ def dashboard(
         "detalle_estado": df_records(mi_detalle)[0] if not mi_detalle.empty else None,
         "detalle_dia_dia": detalle_dia_dia,
         "rueda_segura": mi_rs,
+        "billetera": mi_billetera,
     }
 
 

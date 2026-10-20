@@ -1,9 +1,10 @@
 """Lectura de la réplica ilio (DataCenter_Vanti) para la estrategia Televentas.
 
-Este módulo es solo lector de ilio.v_cuota_protegida — no descarga nada del
-portal, no escribe en el esquema ilio. La única escritura que hace este
-proyecto es el snapshot de cierre de mes en como_vamos_televentas.cierre_mensual,
-y solo cuando auditoría lo declara explícitamente (ver cerrar_mes()).
+Este módulo es solo lector de ilio.v_cuota_protegida, ilio.v_billetera_protegida
+y ilio.v_rueda_segura — no descarga nada del portal, no escribe en el esquema
+ilio. La única escritura que hace este proyecto es el snapshot de cierre de mes
+en como_vamos_televentas.cierre_mensual, y solo cuando auditoría lo declara
+explícitamente (ver cerrar_mes()).
 """
 from __future__ import annotations
 
@@ -20,6 +21,24 @@ MESES_ES = {
 }
 
 ESTADOS_POSITIVOS = ("AUDITADA WEB", "ALTA TRANSACCIONAL")
+
+# Producto de la vista ilio.v_billetera_protegida. Billetera Protegida (BP)
+# cuenta en el acumulado del asesor -- decisión de negocio 2026-10-20: "billetera
+# se analiza con la meta" (mismo trato que Cuota Protegida, a diferencia de
+# Rueda Seguro, que se reporta aparte y nunca se suma). La identificación es por
+# producto porque es la señal que también sobrevive al snapshot de cierre_mensual.
+PRODUCTO_BILLETERA = "BILLETERA PROTEGIDA"
+
+
+def es_billetera(df: pd.DataFrame) -> pd.Series:
+    """Máscara booleana de las filas de Billetera Protegida dentro de un df de
+    ventas (columna 'producto')."""
+    prod = (
+        df["producto"].fillna("").astype(str).str.upper()
+        .str.replace(r"\s+", " ", regex=True).str.strip()
+    )
+    return prod == PRODUCTO_BILLETERA
+
 
 # id_poliza duplicados confirmados en Ilio: mismo asesor, mismo producto, mismo
 # cliente (documento_asegurado), digitados en el mismo minuto o el siguiente --
@@ -96,11 +115,15 @@ def _params_periodo(periodo: dt.date, colectivo: str, fecha_inicio: dt.date) -> 
 
 def leer_televentas(periodo: dt.date, fecha_corte: dt.date | None = None) -> pd.DataFrame:
     """
-    Trae las pólizas de Televentas de un periodo.
+    Trae las pólizas de Televentas de un periodo: Cuota Protegida + Billetera
+    Protegida (ambas cuentan en el acumulado del asesor; ver
+    leer_billetera_protegida).
 
     Si el periodo YA fue cerrado por auditoría, lee el snapshot congelado en
-    cierre_mensual. Si no, lee ilio.v_cuota_protegida EN VIVO (estado actual,
-    tal como esté hoy), aunque el mes calendario ya haya terminado.
+    cierre_mensual (que desde el cierre en adelante ya incluye Billetera
+    Protegida). Si no, lee ilio.v_cuota_protegida y ilio.v_billetera_protegida
+    EN VIVO (estado actual, tal como esté hoy), aunque el mes calendario ya
+    haya terminado.
     """
     cierre = periodo_esta_cerrado(periodo)
     if cierre:
@@ -144,6 +167,45 @@ def leer_televentas(periodo: dt.date, fecha_corte: dt.date | None = None) -> pd.
     with get_conexion() as conn:
         df = pd.read_sql(query, conn, params=params)
     df = df[~df["id_poliza"].isin(DUPLICADOS_ILIO_CONOCIDOS)]
+    df = _ultimo_estado_por_contrato(df)
+
+    # Billetera Protegida entra al mismo acumulado que Cuota Protegida (decisión
+    # 2026-10-20). Se concatena aquí, un solo punto, para que el CLI, la API, el
+    # caché de ventas_mes_actual y el snapshot de cierre_mensual la hereden todos
+    # sin duplicar lógica. No se filtra por asesor: cada quien ve lo suyo en la
+    # vista personal.
+    df_bp = leer_billetera_protegida(periodo, fecha_corte)
+    if df_bp.empty:
+        return df
+    return pd.concat([df, df_bp], ignore_index=True)
+
+
+def leer_billetera_protegida(periodo: dt.date, fecha_corte: dt.date | None = None) -> pd.DataFrame:
+    """Trae las pólizas de Billetera Protegida de Televentas de un periodo,
+    en vivo desde ilio.v_billetera_protegida (mismas columnas, mismos filtros y
+    mismo tratamiento de duplicados que v_cuota_protegida: estrategia, supervisor
+    del TMK, colectivo mensual o anual, sin RENOVACION y último estado por
+    contrato). Cuenta en el acumulado del asesor y en las altas del otrosí."""
+    colectivo = _colectivo_de(periodo)
+    fecha_inicio = periodo.replace(day=1)  # primer día del mes — filtro de corte inferior
+    query = """
+        SELECT id_poliza, fecha_venta, fecha_digitacion, asesor, supervisor,
+               estrategia, producto, plan, colectivo, entidad_facturacion,
+               tarifa, nombre_estado, numero_contrato
+        FROM ilio.v_billetera_protegida
+        WHERE estrategia = 'Televentas' AND colectivo IN (%(colectivo)s, %(colectivo_anual)s)
+          AND supervisor = %(supervisor)s
+          AND nombre_estado <> 'RENOVACION'
+          AND fecha_venta::date >= %(fecha_inicio)s
+          AND fecha_venta::date < %(fecha_fin)s
+    """
+    params: dict = _params_periodo(periodo, colectivo, fecha_inicio)
+    if fecha_corte is not None:
+        query += " AND fecha_venta::date <= %(fecha_corte)s"
+        params["fecha_corte"] = fecha_corte
+
+    with get_conexion() as conn:
+        df = pd.read_sql(query, conn, params=params)
     return _ultimo_estado_por_contrato(df)
 
 

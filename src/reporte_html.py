@@ -12,8 +12,15 @@ import html
 import pandas as pd
 
 from src.calendario import Calendario
-from src.ilio_repo import MESES_ES
-from src.pivote import kpis_facturacion, resumen_por_estado, resumen_rs_por_asesor, resumen_rs_por_dia
+from src.ilio_repo import MESES_ES, es_billetera
+from src.pivote import (
+    kpis_facturacion,
+    resumen_bp_por_asesor,
+    resumen_bp_por_dia,
+    resumen_por_estado,
+    resumen_rs_por_asesor,
+    resumen_rs_por_dia,
+)
 
 # -- Paleta de estado (dataviz, fija, no se retematiza) -----------------------
 GOOD = "#0ca30c"
@@ -254,6 +261,8 @@ def generar_dashboard(
     # df_rs: pólizas de Rueda Segura (ilio.v_rueda_segura, mismo esquema que
     # df_ventas) -- reporte separado de Cuota Protegida, nunca se suma al
     # acumulado de "Como vamos por asesor" (ver validación RS agosto 2026).
+    # Billetera Protegida es al revés: ya viene dentro de df_ventas y SÍ cuenta
+    # en el acumulado (decisión de negocio 2026-10-20).
     meta_total = df_proyeccion["meta_mes"].sum()
     acumulado_total = df_proyeccion["acumulado"].sum()
     forecast_total = df_proyeccion["forecast"].sum()
@@ -288,6 +297,24 @@ def generar_dashboard(
     tabla_rs_asesor = (
         _tabla_conteo(resumen_rs_por_asesor(df_rs), "asesor", "Asesor (RS)")
         if df_rs is not None and not df_rs.empty
+        else None
+    )
+
+    # Billetera Protegida: A DIFERENCIA de RS, estas ventas SÍ cuentan en el
+    # acumulado del asesor y en las altas del otrosí -- ya vienen dentro de
+    # df_ventas, aquí se separan solo para su resumen por día y por asesor.
+    df_bp = df_ventas[es_billetera(df_ventas)]
+    tabla_bp = (
+        _tabla_conteo(
+            resumen_bp_por_dia(df_bp).assign(fecha_venta=lambda d: d["fecha_venta"].astype(str)),
+            "fecha_venta", "Fecha (BP)",
+        )
+        if not df_bp.empty
+        else None
+    )
+    tabla_bp_asesor = (
+        _tabla_conteo(resumen_bp_por_asesor(df_bp), "asesor", "Asesor (BP)")
+        if not df_bp.empty
         else None
     )
 
@@ -448,12 +475,19 @@ def generar_dashboard(
   </div>
 
   {f'''
-  <h2>Rueda Seguro — Auditoría de ventas (RS)</h2>
+  <h2>Rueda Seguro — Auditoría de ventas (RS, no suma al acumulado)</h2>
   <div class="grid-2">
     <div>{tabla_rs}</div>
     <div>{tabla_rs_asesor}</div>
   </div>
   ''' if tabla_rs else ''}
+  {f'''
+  <h2>Billetera Protegida — sí cuenta en el acumulado (BP)</h2>
+  <div class="grid-2">
+    <div>{tabla_bp}</div>
+    <div>{tabla_bp_asesor}</div>
+  </div>
+  ''' if tabla_bp else ''}
 
   </div>
 
@@ -516,18 +550,25 @@ def generar_dashboard(
   </div>
 
   {f'''
-  <h2>Rueda Seguro — Auditoría de ventas (RS)</h2>
+  <h2>Rueda Seguro — Auditoría de ventas (RS, no suma al acumulado)</h2>
   <div class="grid-2">
     <div>{tabla_rs}</div>
     <div>{tabla_rs_asesor}</div>
   </div>
   ''' if tabla_rs else ''}
+  {f'''
+  <h2>Billetera Protegida — sí cuenta en el acumulado (BP)</h2>
+  <div class="grid-2">
+    <div>{tabla_bp}</div>
+    <div>{tabla_bp_asesor}</div>
+  </div>
+  ''' if tabla_bp else ''}
 
   </div>
 </main>
 <footer>
-  Generado automáticamente por 31_AutoCV_Televentas — fuente: ilio.v_cuota_protegida (DataCenter_Vanti), estrategia Televentas.
-  El acumulado de "Como vamos por asesor" incluye todos los estados (AUDITADA WEB, ALTA TRANSACCIONAL, DIGITADA WEB, CANCELADA).
+  Generado automáticamente por 31_AutoCV_Televentas — fuente: ilio.v_cuota_protegida + ilio.v_billetera_protegida (DataCenter_Vanti), estrategia Televentas.
+  El acumulado de "Como vamos por asesor" incluye todos los estados (AUDITADA WEB, ALTA TRANSACCIONAL, DIGITADA WEB, CANCELADA) de Cuota Protegida y Billetera Protegida. Rueda Seguro se reporta aparte y no se suma.
 </footer>
 <script>
 function mostrarTab(ev, id) {{

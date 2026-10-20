@@ -64,12 +64,12 @@ def resumen_por_gasera(df: pd.DataFrame) -> pd.DataFrame:
     return _con_participacion(tabla)
 
 
-def resumen_rs_por_dia(df_rs: pd.DataFrame) -> pd.DataFrame:
-    """Ventas de Rueda Segura por día (Ilio v_rueda_segura) -- reemplaza al
-    resumen basado en el Excel de auditoría OneDrive, que se queda corto
-    (no alcanza a reflejar los últimos días del corte)."""
+def _conteo_por_dia(df: pd.DataFrame) -> pd.DataFrame:
+    """Conteo de pólizas por fecha, SIN facturación -- válido para cualquier
+    producto que viva en una vista propia de Ilio (Rueda Seguro, Billetera
+    Protegida), cuya Facturación SERVI no se calcula."""
     tabla = (
-        df_rs.groupby("fecha_venta")
+        df.groupby("fecha_venta")
         .agg(cantidad=("id_poliza", "count"))
         .reset_index()
         .sort_values("fecha_venta")
@@ -79,15 +79,39 @@ def resumen_rs_por_dia(df_rs: pd.DataFrame) -> pd.DataFrame:
     return tabla
 
 
-def resumen_rs_por_asesor(df_rs: pd.DataFrame) -> pd.DataFrame:
-    """Ventas de Rueda Segura por asesor (Ilio v_rueda_segura) -- separado
-    del acumulado de Cuota Protegida."""
+def _conteo_por_asesor(df: pd.DataFrame) -> pd.DataFrame:
+    """Conteo de pólizas por asesor, sin facturación (ver _conteo_por_dia)."""
     return (
-        df_rs.groupby("asesor")
+        df.groupby("asesor")
         .agg(cantidad=("id_poliza", "count"))
         .reset_index()
         .sort_values("cantidad", ascending=False)
     )
+
+
+def resumen_rs_por_dia(df_rs: pd.DataFrame) -> pd.DataFrame:
+    """Ventas de Rueda Segura por día (Ilio v_rueda_segura) -- reemplaza al
+    resumen basado en el Excel de auditoría OneDrive, que se queda corto
+    (no alcanza a reflejar los últimos días del corte)."""
+    return _conteo_por_dia(df_rs)
+
+
+def resumen_rs_por_asesor(df_rs: pd.DataFrame) -> pd.DataFrame:
+    """Ventas de Rueda Segura por asesor (Ilio v_rueda_segura) -- separado
+    del acumulado de Cuota Protegida."""
+    return _conteo_por_asesor(df_rs)
+
+
+def resumen_bp_por_dia(df_bp: pd.DataFrame) -> pd.DataFrame:
+    """Ventas de Billetera Protegida por día (Ilio v_billetera_protegida).
+    A diferencia de RS, estas ventas SÍ están dentro del acumulado del asesor
+    (se filtran desde el df de ventas consolidado, ver ilio_repo.es_billetera)."""
+    return _conteo_por_dia(df_bp)
+
+
+def resumen_bp_por_asesor(df_bp: pd.DataFrame) -> pd.DataFrame:
+    """Ventas de Billetera Protegida por asesor -- ver resumen_bp_por_dia."""
+    return _conteo_por_asesor(df_bp)
 
 
 def resumen_por_estado(df: pd.DataFrame) -> pd.DataFrame:

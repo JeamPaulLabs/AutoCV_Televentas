@@ -16,7 +16,11 @@ function semaforo(pctCumpl, pctCumplIdeal) {
 
 /** Vista de un solo asesor: solo su operación de ventas (conteos), sin
  * facturación ni valores en pesos -- ver backend/app/routers/como_vamos.py
- * (rama "vista personal" del endpoint /dashboard). */
+ * (rama "vista personal" del endpoint /dashboard).
+ *
+ * Cuota Protegida y Billetera Protegida vienen JUNTAS en detalleDiaDia y
+ * detalleEstado (BP cuenta en el acumulado y en el % de cumplimiento); Rueda
+ * Seguro va en su propia sección porque nunca se suma a la meta. */
 const BADGE_ESTADO = {
   "AUDITADA WEB": "bg-emerald-900 text-emerald-200",
   "ALTA TRANSACCIONAL": "bg-emerald-900 text-emerald-200",
@@ -72,208 +76,111 @@ function contarPorEstado(ventas) {
   });
 }
 
-/** Ventas propias de Rueda Seguro por día, con sus contratos. */
-function TarjetaRuedaSeguro({ ventas }) {
-  const grupos = agruparPorDia(ventas);
-  return (
-    <div className="glass rounded-2xl px-5 py-4">
-      <div className="flex items-center justify-between mb-3">
-        <div className="text-xs uppercase tracking-wide text-white/60 font-semibold">
-          Rueda Seguro
-        </div>
-        <div className="text-2xl font-bold text-white tabular-nums">{ventas.length}</div>
-      </div>
-      <div className="space-y-1.5 max-h-72 overflow-auto pr-1">
-        {grupos.map(([fecha, items]) => (
-          <div key={fecha} className="rounded-lg border border-white/10 px-3 py-2 text-xs">
-            <div className="font-semibold text-white">
-              {fmtFecha(fecha)} <span className="text-white/40 font-normal">· {items.length}</span>
-            </div>
-            <div className="text-white/60 tabular-nums">{items.map((v) => v.contrato).join(", ")}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export default function MiResumenAsesor({ resumen, detalleEstado, detalleDiaDia, ruedaSegura }) {
-  const rs = ruedaSegura || [];
-  const [popup, setPopup] = useState(null);
+/** Sección de un producto: "Pólizas por estado" (clicables para filtrar) a la
+ * izquierda y "Día a día" con los contratos a la derecha. Cada sección maneja
+ * su propio filtro y su propio popup, para que Cuota Protegida + Billetera
+ * Protegida y Rueda Seguro se filtren sin pisarse. */
+function SeccionProducto({ titulo, ventas }) {
   const [filtroEstado, setFiltroEstado] = useState(null);
+  const [popup, setPopup] = useState(null);
 
-  if (!resumen && rs.length === 0) {
-    return (
-      <div className="glass rounded-2xl px-5 py-6 text-sm text-white/60">
-        Todavía no tienes ventas registradas este mes.
-      </div>
-    );
-  }
-
-  // Asesores que venden solo Rueda Seguro (sin meta de Cuota Protegida):
-  // ven la misma pantalla que los demás comerciales, pero con sus ventas de RS.
-  const soloRS = rs.length > 0 && (!resumen || (detalleDiaDia || []).length === 0);
-  const detalle = soloRS ? rs : detalleDiaDia || [];
-
-  const sinMeta = !soloRS && resumen?.categoria === "SIN META";
-  const color = soloRS || sinMeta ? WARNING : semaforo(resumen.pct_cumpl_acumulado, resumen.pct_cump_ideal);
-  const avance = soloRS ? 0 : Math.min(resumen.pct_cumpl_acumulado * 100, 100);
-
-  const estados = soloRS
-    ? contarPorEstado(rs)
-    : detalleEstado
-    ? Object.entries(detalleEstado).filter(([k]) => k !== "asesor" && k !== "Total general")
-    : [];
-  const total = soloRS ? rs.length : detalleEstado?.["Total general"];
+  const estados = contarPorEstado(ventas);
+  const total = ventas.length;
+  const ventasFiltradas = filtroEstado
+    ? ventas.filter((v) => (v.estado || "SIN ESTADO") === filtroEstado)
+    : ventas;
 
   return (
     <div className="grid lg:grid-cols-[minmax(0,1fr)_1.3fr] gap-4 items-start">
-      <div className="space-y-3">
-        {soloRS ? (
-          <div className="grid grid-cols-2 gap-2.5">
-            <StatTile label="Ventas Rueda Seguro" value={fmtNumero(rs.length)} destacado />
-            <StatTile
-              label="Altas del mes"
-              value={fmtNumero(rs.filter((v) => ESTADOS_ALTA.includes(v.estado)).length)}
-            />
-          </div>
-        ) : (
-          <>
-        {resumen.observaciones && (
-          <div className="rounded-2xl border border-amber-300/40 bg-amber-400/10 px-4 py-3 text-xs text-amber-100">
-            <div className="font-semibold mb-0.5">Ajuste en tu meta</div>
-            {resumen.observaciones}
-          </div>
-        )}
-        <div className="grid grid-cols-2 gap-2.5">
-          <StatTile label="Categoría" value={resumen.categoria} />
-          <StatTile label="Meta del mes" value={fmtNumero(resumen.meta_mes)} />
-          <StatTile label="Acumulado" value={fmtNumero(resumen.acumulado)} destacado />
-          <StatTile label="Forecast de cierre" value={fmtNumero(resumen.forecast)} sub={fmtPct(resumen.pct_forecast) + " de la meta"} />
+      <div className="glass rounded-2xl px-5 py-4">
+        <div className="text-xs uppercase tracking-wide text-white/60 font-semibold mb-3">
+          Pólizas por estado — {titulo}
         </div>
-
-        <div className="glass rounded-2xl px-5 py-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs uppercase tracking-wide text-white/60 font-semibold">
-              Cumplimiento acumulado
-            </span>
-            <span className="text-sm font-bold text-white tabular-nums">
-              {fmtPct(resumen.pct_cumpl_acumulado)}
-            </span>
-          </div>
-          <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-            <div className="h-full rounded-full transition-all" style={{ width: `${avance}%`, background: color }} />
-          </div>
-          <div className="mt-2 text-[11px] text-white/50">
-            {sinMeta
-              ? "Todavía no tienes una meta asignada este mes."
-              : `Ideal a la fecha: ${fmtPct(resumen.pct_cump_ideal)} · faltan ${fmtNumero(Math.max(resumen.faltan_para_meta, 0))} para la meta`}
-          </div>
+        <div className="space-y-2">
+          {estados.map(([estado, cantidad]) => {
+            const pct = total ? (cantidad / total) * 100 : 0;
+            const deEsteEstado = ventas.filter((v) => (v.estado || "SIN ESTADO") === estado);
+            const activo = filtroEstado === estado;
+            return (
+              <div
+                key={estado}
+                role="button"
+                tabIndex={0}
+                onClick={() => setFiltroEstado(activo ? null : estado)}
+                onKeyDown={(e) => e.key === "Enter" && setFiltroEstado(activo ? null : estado)}
+                className={`flex items-center gap-3 rounded-lg px-2 py-1 -mx-2 cursor-pointer transition-colors ${activo ? "bg-white/10" : "hover:bg-white/5"}`}
+                title="Clic para filtrar el día a día por este estado"
+              >
+                <div className={`w-40 shrink-0 text-xs truncate ${activo ? "text-white font-semibold" : "text-white/75"}`} title={estado}>
+                  {estado}
+                </div>
+                <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full bg-xuma-green-dark" style={{ width: `${pct}%` }} />
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (deEsteEstado.length > 0) {
+                      setPopup({ titulo: `${estado} · total del mes`, estado, grupos: agruparPorDia(deEsteEstado) });
+                    }
+                  }}
+                  disabled={deEsteEstado.length === 0}
+                  className="w-8 shrink-0 text-right text-xs font-bold text-white tabular-nums hover:text-xuma-green-light transition-colors disabled:hover:text-white disabled:cursor-default"
+                >
+                  {cantidad}
+                </button>
+              </div>
+            );
+          })}
         </div>
-
-          </>
-        )}
-
-        {!soloRS && rs.length > 0 && <TarjetaRuedaSeguro ventas={rs} />}
-
-        {estados.length > 0 && (
-          <div className="glass rounded-2xl px-5 py-4">
-            <div className="text-xs uppercase tracking-wide text-white/60 font-semibold mb-3">
-              Pólizas por estado
-            </div>
-            <div className="space-y-2">
-              {estados.map(([estado, cantidad]) => {
-                const pct = total ? (cantidad / total) * 100 : 0;
-                const deEsteEstado = detalle.filter((v) => (v.estado || "SIN ESTADO") === estado);
-                const activo = filtroEstado === estado;
-                return (
-                  <div
-                    key={estado}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setFiltroEstado(activo ? null : estado)}
-                    onKeyDown={(e) => e.key === "Enter" && setFiltroEstado(activo ? null : estado)}
-                    className={`flex items-center gap-3 rounded-lg px-2 py-1 -mx-2 cursor-pointer transition-colors ${activo ? "bg-white/10" : "hover:bg-white/5"}`}
-                    title="Clic para filtrar el día a día por este estado"
-                  >
-                    <div className={`w-40 shrink-0 text-xs truncate ${activo ? "text-white font-semibold" : "text-white/75"}`} title={estado}>
-                      {estado}
-                    </div>
-                    <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full bg-xuma-green-dark" style={{ width: `${pct}%` }} />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (deEsteEstado.length > 0) {
-                          setPopup({ titulo: `${estado} · total del mes`, estado, grupos: agruparPorDia(deEsteEstado) });
-                        }
-                      }}
-                      disabled={deEsteEstado.length === 0}
-                      className="w-8 shrink-0 text-right text-xs font-bold text-white tabular-nums hover:text-xuma-green-light transition-colors disabled:hover:text-white disabled:cursor-default"
-                    >
-                      {cantidad}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </div>
 
-      {detalle.length > 0 && (
-        <div className="glass rounded-2xl px-5 py-4 lg:sticky lg:top-[76px]">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-xs uppercase tracking-wide text-white/60 font-semibold">
-              Día a día del mes{soloRS ? " — Rueda Seguro" : ""}
-            </div>
-            {filtroEstado && (
-              <button
-                type="button"
-                onClick={() => setFiltroEstado(null)}
-                className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold ${BADGE_ESTADO[filtroEstado] || BADGE_ESTADO_DEFAULT}`}
-              >
-                {filtroEstado} ✕
-              </button>
-            )}
+      <div className="glass rounded-2xl px-5 py-4 lg:sticky lg:top-[76px]">
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-xs uppercase tracking-wide text-white/60 font-semibold">
+            Día a día — {titulo}
           </div>
-          <div className="space-y-1.5 max-h-[calc(100vh-220px)] overflow-auto pr-1">
-            {agruparPorDia(detalle)
-              .map(([fecha, ventas]) => [
-                fecha,
-                filtroEstado ? ventas.filter((v) => (v.estado || "SIN ESTADO") === filtroEstado) : ventas,
-              ])
-              .filter(([, ventas]) => ventas.length > 0)
-              .map(([fecha, ventas]) => (
-                <div key={fecha} className="rounded-lg border border-white/10 px-3 py-2 flex items-center justify-between gap-2 flex-wrap">
-                  <span className="font-semibold text-white text-xs shrink-0">
-                    {fmtFecha(fecha)} <span className="text-white/40 font-normal">· {ventas.length}</span>
-                  </span>
-                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                    {contarPorEstado(ventas).map(([estado, cantidad]) => (
-                      <button
-                        key={estado}
-                        type="button"
-                        onClick={() =>
-                          setPopup({
-                            titulo: fmtFecha(fecha),
-                            estado,
-                            grupos: [[fecha, ventas.filter((v) => (v.estado || "SIN ESTADO") === estado)]],
-                          })
-                        }
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-semibold cursor-pointer hover:brightness-125 transition text-center min-w-[92px] ${BADGE_ESTADO[estado] || BADGE_ESTADO_DEFAULT}`}
-                      >
-                        {cantidad} {estado}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-          </div>
+          {filtroEstado && (
+            <button
+              type="button"
+              onClick={() => setFiltroEstado(null)}
+              className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold ${BADGE_ESTADO[filtroEstado] || BADGE_ESTADO_DEFAULT}`}
+            >
+              {filtroEstado} ✕
+            </button>
+          )}
         </div>
-      )}
+        <div className="space-y-1.5 max-h-[calc(100vh-220px)] overflow-auto pr-1">
+          {agruparPorDia(ventasFiltradas)
+            .filter(([, items]) => items.length > 0)
+            .map(([fecha, items]) => (
+              <div key={fecha} className="rounded-lg border border-white/10 px-3 py-2 flex items-center justify-between gap-2 flex-wrap">
+                <span className="font-semibold text-white text-xs shrink-0">
+                  {fmtFecha(fecha)} <span className="text-white/40 font-normal">· {items.length}</span>
+                </span>
+                <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                  {contarPorEstado(items).map(([estado, cantidad]) => (
+                    <button
+                      key={estado}
+                      type="button"
+                      onClick={() =>
+                        setPopup({
+                          titulo: fmtFecha(fecha),
+                          estado,
+                          grupos: [[fecha, items.filter((v) => (v.estado || "SIN ESTADO") === estado)]],
+                        })
+                      }
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-semibold cursor-pointer hover:brightness-125 transition text-center min-w-[92px] ${BADGE_ESTADO[estado] || BADGE_ESTADO_DEFAULT}`}
+                    >
+                      {cantidad} {estado}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+        </div>
+      </div>
 
       {popup && (
         <div
@@ -303,15 +210,15 @@ export default function MiResumenAsesor({ resumen, detalleEstado, detalleDiaDia,
               </button>
             </div>
             <div className="space-y-4">
-              {popup.grupos.map(([fecha, ventas]) => (
+              {popup.grupos.map(([fecha, items]) => (
                 <div key={fecha}>
                   {popup.grupos.length > 1 && (
                     <div className="text-[11px] font-semibold text-white/50 uppercase tracking-wide mb-1.5">
-                      {fmtFecha(fecha)} · {ventas.length}
+                      {fmtFecha(fecha)} · {items.length}
                     </div>
                   )}
                   <div className="space-y-2">
-                    {ventas.map((v, i) => (
+                    {items.map((v, i) => (
                       <div key={`${v.contrato}-${i}`} className="flex items-center justify-between text-xs border-t border-white/10 pt-2 first:border-t-0 first:pt-0">
                         <span className="text-white font-semibold tabular-nums">{v.contrato || "—"}</span>
                         <span className="text-white/60">{v.producto || "—"}</span>
@@ -324,6 +231,91 @@ export default function MiResumenAsesor({ resumen, detalleEstado, detalleDiaDia,
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+export default function MiResumenAsesor({ resumen, detalleDiaDia, ruedaSegura, billetera }) {
+  const rs = ruedaSegura || [];
+  const detalle = detalleDiaDia || [];
+
+  if (!resumen && rs.length === 0) {
+    return (
+      <div className="glass rounded-2xl px-5 py-6 text-sm text-white/60">
+        Todavía no tienes ventas registradas este mes.
+      </div>
+    );
+  }
+
+  // Rueda Seguro va aparte (nunca suma a la meta). Si el asesor no tiene
+  // ventas de Cuota Protegida/Billetera Protegida, su pantalla es solo RS.
+  const soloRS = rs.length > 0 && detalle.length === 0;
+  const conMeta = !!resumen && !soloRS;
+
+  const sinMeta = conMeta && resumen.categoria === "SIN META";
+  const color = !conMeta || sinMeta ? WARNING : semaforo(resumen.pct_cumpl_acumulado, resumen.pct_cump_ideal);
+  const avance = conMeta ? Math.min(resumen.pct_cumpl_acumulado * 100, 100) : 0;
+
+  return (
+    <div className="space-y-4">
+      {conMeta && (
+        <div className="space-y-3">
+          {resumen.observaciones && (
+            <div className="rounded-2xl border border-amber-300/40 bg-amber-400/10 px-4 py-3 text-xs text-amber-100">
+              <div className="font-semibold mb-0.5">Ajuste en tu meta</div>
+              {resumen.observaciones}
+            </div>
+          )}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+            <StatTile label="Categoría" value={resumen.categoria} />
+            <StatTile label="Meta del mes" value={fmtNumero(resumen.meta_mes)} />
+            <StatTile label="Acumulado" value={fmtNumero(resumen.acumulado)} destacado />
+            <StatTile label="Forecast de cierre" value={fmtNumero(resumen.forecast)} sub={fmtPct(resumen.pct_forecast) + " de la meta"} />
+            {billetera?.total > 0 && (
+              <StatTile
+                label="Billetera Protegida"
+                value={fmtNumero(billetera.total)}
+                sub={`${fmtNumero(billetera.altas)} altas del mes`}
+              />
+            )}
+          </div>
+
+          <div className="glass rounded-2xl px-5 py-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs uppercase tracking-wide text-white/60 font-semibold">
+                Cumplimiento acumulado
+              </span>
+              <span className="text-sm font-bold text-white tabular-nums">
+                {fmtPct(resumen.pct_cumpl_acumulado)}
+              </span>
+            </div>
+            <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+              <div className="h-full rounded-full transition-all" style={{ width: `${avance}%`, background: color }} />
+            </div>
+            <div className="mt-2 text-[11px] text-white/50">
+              {sinMeta
+                ? "Todavía no tienes una meta asignada este mes."
+                : `Ideal a la fecha: ${fmtPct(resumen.pct_cump_ideal)} · faltan ${fmtNumero(Math.max(resumen.faltan_para_meta, 0))} para la meta`}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {soloRS && (
+        <div className="grid grid-cols-2 gap-2.5">
+          <StatTile label="Ventas Rueda Seguro" value={fmtNumero(rs.length)} destacado />
+          <StatTile
+            label="Altas del mes"
+            value={fmtNumero(rs.filter((v) => ESTADOS_ALTA.includes(v.estado)).length)}
+          />
+        </div>
+      )}
+
+      {detalle.length > 0 && (
+        <SeccionProducto titulo="Cuota Protegida y Billetera Protegida" ventas={detalle} />
+      )}
+
+      {rs.length > 0 && <SeccionProducto titulo="Rueda Seguro" ventas={rs} />}
     </div>
   );
 }

@@ -136,9 +136,9 @@ export default function App() {
         {data?.vista === "personal" && (
           <MiResumenAsesor
             resumen={data.resumen}
-            detalleEstado={data.detalle_estado}
             detalleDiaDia={data.detalle_dia_dia}
             ruedaSegura={data.rueda_segura}
+            billetera={data.billetera}
           />
         )}
 
@@ -217,24 +217,48 @@ export default function App() {
                         />
                       </div>
 
-                      {data.rueda_segura.tabla_dias.length > 0 && (
+                      {(data.rueda_segura.tabla_dias.length > 0 || (data.billetera?.tabla_dias?.length || 0) > 0) && (
                         <div>
-                          <h3 className="text-xs uppercase tracking-wide text-white/70 font-bold border-b-2 border-xuma-green-dark pb-1 mb-2">
-                            Rueda Seguro — Auditoría (RS)
-                          </h3>
-                          <TablaConteo
-                            filas={data.rueda_segura.tabla_dias}
-                            colEtiqueta="fecha_venta"
-                            etiqueta="Fecha (RS)"
-                          />
-                          <h3 className="text-xs uppercase tracking-wide text-white/70 font-bold border-b-2 border-xuma-green-dark pb-1 mb-2 mt-3">
-                            Asesor (RS)
-                          </h3>
-                          <TablaConteo
-                            filas={data.rueda_segura.tabla_asesor}
-                            colEtiqueta="asesor"
-                            etiqueta="Asesor (RS)"
-                          />
+                          {data.rueda_segura.tabla_dias.length > 0 && (
+                            <>
+                              <h3 className="text-xs uppercase tracking-wide text-white/70 font-bold border-b-2 border-xuma-green-dark pb-1 mb-2">
+                                Rueda Seguro — Auditoría (RS)
+                              </h3>
+                              <TablaConteo
+                                filas={data.rueda_segura.tabla_dias}
+                                colEtiqueta="fecha_venta"
+                                etiqueta="Fecha (RS)"
+                              />
+                              <h3 className="text-xs uppercase tracking-wide text-white/70 font-bold border-b-2 border-xuma-green-dark pb-1 mb-2 mt-3">
+                                Asesor (RS)
+                              </h3>
+                              <TablaConteo
+                                filas={data.rueda_segura.tabla_asesor}
+                                colEtiqueta="asesor"
+                                etiqueta="Asesor (RS)"
+                              />
+                            </>
+                          )}
+                          {(data.billetera?.tabla_dias?.length || 0) > 0 && (
+                            <>
+                              <h3 className="text-xs uppercase tracking-wide text-white/70 font-bold border-b-2 border-xuma-green-dark pb-1 mb-2 mt-4">
+                                Billetera Protegida — cuenta en el acumulado
+                              </h3>
+                              <TablaConteo
+                                filas={data.billetera.tabla_dias}
+                                colEtiqueta="fecha_venta"
+                                etiqueta="Fecha (BP)"
+                              />
+                              <h3 className="text-xs uppercase tracking-wide text-white/70 font-bold border-b-2 border-xuma-green-dark pb-1 mb-2 mt-3">
+                                Asesor (BP)
+                              </h3>
+                              <TablaConteo
+                                filas={data.billetera.tabla_asesor}
+                                colEtiqueta="asesor"
+                                etiqueta="Asesor (BP)"
+                              />
+                            </>
+                          )}
                         </div>
                       )}
                     </div>
@@ -305,7 +329,8 @@ export default function App() {
       </main>
 
       <footer className="px-4 md:px-6 py-2.5 text-[10px] text-white/40 border-t border-white/10 max-w-[1900px] mx-auto">
-        Fuente: Ilio, estrategia Televentas · incluye Auditada Web, Alta Transaccional, Digitada Web y Cancelada.
+        Fuente: Ilio, estrategia Televentas · incluye Auditada Web, Alta Transaccional, Digitada Web y Cancelada ·
+        Cuota Protegida y Billetera Protegida cuentan en el acumulado; Rueda Seguro se reporta aparte.
       </footer>
     </div>
   );
