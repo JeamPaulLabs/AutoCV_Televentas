@@ -111,11 +111,15 @@ function contarPorProducto(ventas) {
 /** Sección unificada: "Pólizas por estado" (clicables para filtrar) a la
  * izquierda y "Día a día" con los contratos a la derecha. Un solo bloque para
  * todos los productos; cada fila se identifica con CP / RS / BP. */
-function SeccionVentas({ ventas, canceladasContratos }) {
-  const cancelSet = canceladasContratos || new Set();
+function SeccionVentas({ ventas, canceladas }) {
+  const canceladasArr = canceladas || [];
   const [filtroEstado, setFiltroEstado] = useState(null);
   const [filtroProducto, setFiltroProducto] = useState(null);
   const [popup, setPopup] = useState(null);
+  const [popupCanceladas, setPopupCanceladas] = useState(null);
+
+  const canceladasDelDia = (items) =>
+    canceladasArr.filter((c) => items.some((v) => normContratoJs(v.contrato) === normContratoJs(c.numero_contrato)));
 
   const estados = contarPorEstado(ventas);
   const productos = contarPorProducto(ventas);
@@ -238,15 +242,16 @@ function SeccionVentas({ ventas, canceladasContratos }) {
               <div key={fecha} className="rounded-lg border border-white/10 px-3 py-2 flex items-center justify-between gap-2 flex-wrap">
                 <span className="font-semibold text-white text-xs shrink-0 flex items-center gap-1.5">
                   {fmtFecha(fecha)} <span className="text-white/40 font-normal">· {items.length}</span>
-                  {(() => {
-                    const n = items.filter((v) => cancelSet.has(normContratoJs(v.contrato))).length;
-                    if (!n) return null;
-                    return (
-                      <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-red-900/60 text-red-200" title="Contratos con revisión de cancelada">
-                        📋 {n}
-                      </span>
-                    );
-                  })()}
+                  {canceladasDelDia(items).length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setPopupCanceladas(canceladasDelDia(items))}
+                      className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-red-900/60 text-red-200 cursor-pointer hover:brightness-125 transition"
+                      title="Ver revisión de canceladas de este día"
+                    >
+                      📋 {canceladasDelDia(items).length}
+                    </button>
+                  )}
                 </span>
                 <div className="flex items-center gap-1.5 flex-wrap justify-end">
                   {contarPorProducto(items).map(([corto, cantidad]) => (
@@ -340,103 +345,91 @@ function SeccionVentas({ ventas, canceladasContratos }) {
           </div>
         </div>
       )}
-    </div>
-  );
-}
 
-function TextoLargo({ texto, max = 140 }) {
-  const [abierto, setAbierto] = useState(false);
-  if (!texto) return <span className="text-white/40">—</span>;
-  if (texto.length <= max) return <span className="text-white/75">{texto}</span>;
-  return (
-    <span className="text-white/75">
-      {abierto ? texto : texto.slice(0, max) + "…"}
-      <button
-        type="button"
-        onClick={() => setAbierto((v) => !v)}
-        className="ml-1.5 text-xuma-green-light hover:underline text-[10px] font-semibold"
-      >
-        {abierto ? "ver menos" : "ver completo"}
-      </button>
-    </span>
-  );
-}
-
-function SeccionCanceladas({ items }) {
-  return (
-    <div className="glass rounded-2xl px-5 py-4 space-y-3">
-      <div className="text-xs uppercase tracking-wide text-white/60 font-semibold">
-        Canceladas con revisión ({items.length})
-      </div>
-      <div className="space-y-3">
-        {items.map((c, i) => (
-          <div key={`${c.numero_contrato}-${i}`} className="rounded-xl border border-white/10 px-4 py-3 space-y-2">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <span className="font-semibold text-white text-xs tabular-nums">
-                {c.numero_contrato || "—"}
-              </span>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {c.producto && (
-                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-white/10 text-white/70">
-                    {c.producto}
-                  </span>
-                )}
-                {c.gestion_supervisor_tmk && (
-                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-900/60 text-amber-200">
-                    {c.gestion_supervisor_tmk}
-                  </span>
-                )}
-                {c.estado_subsanacion && (
-                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-violet-900/60 text-violet-200">
-                    {c.estado_subsanacion}
-                  </span>
-                )}
+      {popupCanceladas && (
+        <div
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4"
+          onClick={() => setPopupCanceladas(null)}
+        >
+          <div
+            className="modal-solid rounded-2xl px-5 py-4 max-w-lg w-full max-h-[80vh] overflow-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-xs uppercase tracking-wide text-white/60 font-semibold">
+                Canceladas con revisión ({popupCanceladas.length})
               </div>
+              <button
+                type="button"
+                onClick={() => setPopupCanceladas(null)}
+                className="w-7 h-7 rounded-lg border border-white/20 text-white/70 hover:bg-white/10 transition-colors"
+                aria-label="Cerrar"
+              >
+                ✕
+              </button>
             </div>
-            {c.fecha_venta && (
-              <div className="text-[10px] text-white/40">Venta: {fmtFecha(c.fecha_venta)}</div>
-            )}
-            {c.causal_gestion && (
-              <div className="text-xs">
-                <span className="text-white/50 font-semibold">Motivo: </span>
-                <span className="text-white/75">{c.causal_gestion}</span>
-              </div>
-            )}
-            {c.observacion && (
-              <div className="text-xs">
-                <span className="text-white/50 font-semibold">Observación Kevin: </span>
-                <TextoLargo texto={c.observacion} />
-              </div>
-            )}
-            {c.resultado_re_auditoria && (
-              <div className="text-xs">
-                <span className="text-white/50 font-semibold">Re-auditoría: </span>
-                <span className="text-white/75">{c.resultado_re_auditoria}</span>
-                {c.reauditoria && <span className="text-white/50"> · {c.reauditoria}</span>}
-              </div>
-            )}
-            {c.observacion_re_auditoria && (
-              <div className="text-xs">
-                <span className="text-white/50 font-semibold">Obs. re-auditoría: </span>
-                <TextoLargo texto={c.observacion_re_auditoria} />
-              </div>
-            )}
-            {c.observaciones_reauditoria && (
-              <div className="text-xs">
-                <span className="text-white/50 font-semibold">Obs. subsanación: </span>
-                <TextoLargo texto={c.observaciones_reauditoria} />
-              </div>
-            )}
-            {(c.fecha_gestion || c.gestor) && (
-              <div className="text-[10px] text-white/40">
-                {c.fecha_gestion ? `Gestión: ${fmtFecha(c.fecha_gestion)}` : ""}
-                {c.fecha_gestion && c.gestor ? " · " : ""}
-                {c.gestor ? `Gestor: ${c.gestor}` : ""}
-              </div>
-            )}
+            <div className="space-y-3">
+              {popupCanceladas.map((c, i) => (
+                <div key={`${c.numero_contrato}-${i}`} className="rounded-xl border border-white/10 px-4 py-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="font-semibold text-white text-xs tabular-nums">{c.numero_contrato || "—"}</span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {c.producto && (
+                        <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-white/10 text-white/70">{c.producto}</span>
+                      )}
+                      {c.gestion_supervisor_tmk && (
+                        <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-900/60 text-amber-200">{c.gestion_supervisor_tmk}</span>
+                      )}
+                      {c.estado_subsanacion && (
+                        <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-violet-900/60 text-violet-200">{c.estado_subsanacion}</span>
+                      )}
+                    </div>
+                  </div>
+                  {c.fecha_venta && <div className="text-[10px] text-white/40">Venta: {fmtFecha(c.fecha_venta)}</div>}
+                  {c.causal_gestion && (
+                    <div className="text-xs">
+                      <span className="text-white/50 font-semibold">Motivo: </span>
+                      <span className="text-white/75">{c.causal_gestion}</span>
+                    </div>
+                  )}
+                  {c.observacion && (
+                    <div className="text-xs">
+                      <span className="text-white/50 font-semibold">Observación Kevin: </span>
+                      <span className="text-white/90">{c.observacion}</span>
+                    </div>
+                  )}
+                  {c.resultado_re_auditoria && (
+                    <div className="text-xs">
+                      <span className="text-white/50 font-semibold">Re-auditoría: </span>
+                      <span className="text-white/75">{c.resultado_re_auditoria}</span>
+                      {c.reauditoria && <span className="text-white/50"> · {c.reauditoria}</span>}
+                    </div>
+                  )}
+                  {c.observacion_re_auditoria && (
+                    <div className="text-xs">
+                      <span className="text-white/50 font-semibold">Obs. re-auditoría: </span>
+                      <span className="text-white/90">{c.observacion_re_auditoria}</span>
+                    </div>
+                  )}
+                  {c.observaciones_reauditoria && (
+                    <div className="text-xs">
+                      <span className="text-white/50 font-semibold">Obs. subsanación: </span>
+                      <span className="text-white/90">{c.observaciones_reauditoria}</span>
+                    </div>
+                  )}
+                  {(c.fecha_gestion || c.gestor) && (
+                    <div className="text-[10px] text-white/40">
+                      {c.fecha_gestion ? `Gestión: ${fmtFecha(c.fecha_gestion)}` : ""}
+                      {c.fecha_gestion && c.gestor ? " · " : ""}
+                      {c.gestor ? `Gestor: ${c.gestor}` : ""}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -511,12 +504,8 @@ export default function MiResumenAsesor({ resumen, detalleDiaDia, billetera, can
       )}
 
       {ventas.length > 0 && (
-        <SeccionVentas
-          ventas={ventas}
-          canceladasContratos={new Set((canceladasRevision || []).map((c) => normContratoJs(c.numero_contrato)))}
-        />
+        <SeccionVentas ventas={ventas} canceladas={canceladasRevision || []} />
       )}
-      {canceladasRevision?.length > 0 && <SeccionCanceladas items={canceladasRevision} />}
     </div>
   );
 }

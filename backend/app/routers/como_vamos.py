@@ -244,44 +244,6 @@ def dashboard(
             for r in rs_mias.itertuples(index=False)
         ]
 
-    # Canceladas con revisión (subsanación / re-auditoría) del asesor en el
-    # periodo: motivo de cancelación, observación de Kevin, estado de
-    # subsanación y re-auditoría. Solo se cruza en la pantalla personal.
-    # Se hace antes del if para que también esté disponible en el caso de
-    # asesores sin fila en la proyección.
-    mi_canceladas = []
-    try:
-        with get_conexion() as conn:
-            cur = conn.cursor()
-            cur.execute(
-                "SELECT numero_contrato, asesor, producto, fecha_venta, "
-                "causal_gestion, gestion_supervisor_tmk, observacion, "
-                "resultado_re_auditoria, observacion_re_auditoria, "
-                "estado_subsanacion, solicitud, reauditoria, "
-                "observaciones_reauditoria, fecha_gestion, gestor "
-                "FROM como_vamos_televentas.canceladas_revision "
-                "WHERE periodo = %s",
-                (periodo_d,),
-            )
-            cols = [d[0] for d in cur.description]
-            for row in cur.fetchall():
-                rec = dict(zip(cols, row))
-                if _norm_nombre(rec.get("asesor") or "") != mi_alias_norm:
-                    continue
-                contrato = (rec.get("numero_contrato") or "")
-                contrato = str(contrato).strip()
-                if contrato.endswith(".0"):
-                    contrato = contrato[:-2]
-                contrato = contrato.replace(" ", "")
-                rec["numero_contrato"] = contrato
-                if rec.get("fecha_venta") is not None and hasattr(rec["fecha_venta"], "isoformat"):
-                    rec["fecha_venta"] = rec["fecha_venta"].isoformat()
-                if rec.get("fecha_gestion") is not None and hasattr(rec["fecha_gestion"], "isoformat"):
-                    rec["fecha_gestion"] = rec["fecha_gestion"].isoformat()
-                mi_canceladas.append(rec)
-    except Exception:
-        mi_canceladas = []
-
     mask_mio = df_proyeccion["asesor"].map(_norm_nombre) == mi_alias_norm
     mi_fila = df_proyeccion[mask_mio]
     if mi_fila.empty:
@@ -299,7 +261,7 @@ def dashboard(
             "detalle_estado": None,
             "detalle_dia_dia": mi_rs,
             "billetera": None,
-            "canceladas_revision": mi_canceladas,
+            "canceladas_revision": [],
         }
 
     mask_pivote = df_pivote["asesor"].map(_norm_nombre) == mi_alias_norm
@@ -336,6 +298,52 @@ def dashboard(
             "total": int(len(mis_bp)),
             "altas": int(mis_bp["nombre_estado"].isin(ESTADOS_POSITIVOS).sum()),
         }
+
+    # Canceladas con revisión (subsanación / re-auditoría) del asesor. Solo se
+    # muestran las que SIGUEN canceladas: si la venta ya maduró a AUDITADA WEB
+    # o ALTA TRANSACCIONAL (venta efectiva), ya no debe aparecer como cancelada.
+    estado_por_contrato: dict[str, str | None] = {}
+    for r in mis_ventas.itertuples(index=False):
+        c = getattr(r, "numero_contrato", None)
+        c = "" if c is None else str(c).strip()
+        if c.endswith(".0"):
+            c = c[:-2]
+        estado_por_contrato[c.replace(" ", "")] = getattr(r, "nombre_estado", None)
+
+    mi_canceladas = []
+    try:
+        with get_conexion() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT numero_contrato, asesor, producto, fecha_venta, "
+                "causal_gestion, gestion_supervisor_tmk, observacion, "
+                "resultado_re_auditoria, observacion_re_auditoria, "
+                "estado_subsanacion, solicitud, reauditoria, "
+                "observaciones_reauditoria, fecha_gestion, gestor "
+                "FROM como_vamos_televentas.canceladas_revision "
+                "WHERE periodo = %s",
+                (periodo_d,),
+            )
+            cols = [d[0] for d in cur.description]
+            for row in cur.fetchall():
+                rec = dict(zip(cols, row))
+                if _norm_nombre(rec.get("asesor") or "") != mi_alias_norm:
+                    continue
+                contrato = str(rec.get("numero_contrato") or "").strip()
+                if contrato.endswith(".0"):
+                    contrato = contrato[:-2]
+                contrato = contrato.replace(" ", "")
+                # Ocultar las que ya son venta efectiva (auditada web / alta).
+                if estado_por_contrato.get(contrato) in ESTADOS_POSITIVOS:
+                    continue
+                rec["numero_contrato"] = contrato
+                if rec.get("fecha_venta") is not None and hasattr(rec["fecha_venta"], "isoformat"):
+                    rec["fecha_venta"] = rec["fecha_venta"].isoformat()
+                if rec.get("fecha_gestion") is not None and hasattr(rec["fecha_gestion"], "isoformat"):
+                    rec["fecha_gestion"] = rec["fecha_gestion"].isoformat()
+                mi_canceladas.append(rec)
+    except Exception:
+        mi_canceladas = []
 
     return {
         **base,
