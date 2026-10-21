@@ -45,7 +45,7 @@ from src.pivote import (
 from src.ruedas_seguro_repo import combinar_con_ilio, leer_rs
 from src.tarifas_repo import con_facturacion_servi, leer_tarifas, planes_sin_tarifa
 
-from ..auth_dep import es_supervisor_televentas, get_current_user
+from ..auth_dep import es_supervisor_televentas, get_current_user, puede_ver_vista_equipo
 from ..utils import df_records
 
 router = APIRouter()
@@ -112,6 +112,7 @@ def periodos(current: dict = Depends(get_current_user)):
 def dashboard(
     periodo: str = Query(..., description="Periodo del mes, formato YYYY-MM (ej. 2026-08)"),
     fecha_corte: str | None = Query(None, description="Corte, formato YYYY-MM-DD; default hoy"),
+    modo: str = Query("auto", description="Vista a mostrar: auto, personal o equipo"),
     current: dict = Depends(get_current_user),
 ):
     periodo_d = _parse_periodo(periodo)
@@ -191,10 +192,20 @@ def dashboard(
         },
     }
 
-    if es_supervisor_televentas(current):
+    # Decide si se muestra la vista "equipo" (administrativa, con facturación).
+    # Supervisores/superadmins la ven por defecto (modo auto); los usuarios
+    # habilitados en auth_dep.USUARIOS_VISTA_ADMINISTRATIVA pueden solicitarla
+    # con modo=equipo (switch del frontend).
+    autorizado_equipo = puede_ver_vista_equipo(current)
+    mostrar_equipo = (
+        modo == "equipo" and autorizado_equipo
+    ) or (modo == "auto" and es_supervisor_televentas(current))
+
+    if mostrar_equipo:
         return {
             **base,
             "vista": "equipo",
+            "puede_ver_equipo": autorizado_equipo,
             "kpis": kpis,
             "podio": df_records(top3[["asesor", "acumulado", "pct_cumpl_acumulado"]]),
             "resumen_equipo": {
@@ -246,18 +257,48 @@ def dashboard(
 
     mask_mio = df_proyeccion["asesor"].map(_norm_nombre) == mi_alias_norm
     mi_fila = df_proyeccion[mask_mio]
+    autorizado_equipo = puede_ver_vista_equipo(current)
+
+    # Si el asesor no tuvo ventas pero SÍ tiene meta cargada, se le muestra la
+    # meta igualmente (antes quedaba sin bloque de meta). La meta viene de
+    # como_vamos_televentas.metas por nombre, independiente de ilio.
+    mi_meta_row = None
+    if not df_metas.empty and mi_alias_norm in set(df_metas["asesor_norm"]):
+        mi_meta_row = df_metas[df_metas["asesor_norm"] == mi_alias_norm].iloc[0]
+
     if mi_fila.empty:
         # Sin fila en la proyección: no vendió nada este mes, o vendió pero no
         # entró al acumulado (asesor excluido del tablero). Si tiene pólizas RS
-        # en el Excel de auditoría que no llegaron a Ilio, se las muestran igual,
-        # sin bloque de meta (no hay nada que proyectar).
-        if not mi_rs:
-            return {**base, "vista": "personal", "disponible": False}
+        # en el Excel de auditoría que no llegaron a Ilio, se las muestran igual.
+        # Si tiene meta cargada, se muestra el bloque de meta con acumulado 0.
+        resumen_sin_ventas = None
+        if mi_meta_row is not None:
+            resumen_sin_ventas = {
+                "asesor": mi_meta_row["asesor"],
+                "categoria": mi_meta_row["categoria"],
+                "meta_mes": int(mi_meta_row["meta_escala_1"]),
+                "acumulado": 0,
+                "pct_cumpl_acumulado": 0.0,
+                "meta_diaria": 0.0,
+                "faltan_para_meta": int(mi_meta_row["meta_escala_1"]),
+                "venta_necesaria_dia": 0.0,
+                "meta_ideal_a_la_fecha": 0.0,
+                "pct_cump_ideal": 0.0,
+                "prom_por_dia": 0.0,
+                "forecast": 0.0,
+                "pct_forecast": 0.0,
+                "escala_alcanzada": 0,
+                "observaciones": (mi_meta_row.get("observaciones")
+                                 if isinstance(mi_meta_row.get("observaciones"), str) else ""),
+            }
+        if not mi_rs and resumen_sin_ventas is None:
+            return {**base, "vista": "personal", "disponible": False, "puede_ver_equipo": autorizado_equipo}
         return {
             **base,
             "vista": "personal",
             "disponible": True,
-            "resumen": None,
+            "puede_ver_equipo": autorizado_equipo,
+            "resumen": resumen_sin_ventas,
             "detalle_estado": None,
             "detalle_dia_dia": mi_rs,
             "billetera": None,
@@ -349,6 +390,7 @@ def dashboard(
         **base,
         "vista": "personal",
         "disponible": True,
+        "puede_ver_equipo": autorizado_equipo,
         "resumen": resumen,
         "detalle_estado": df_records(mi_detalle)[0] if not mi_detalle.empty else None,
         "detalle_dia_dia": detalle_dia_dia,

@@ -64,7 +64,8 @@ function fmtActualizado(iso) {
 
 export default function App() {
   const [periodo, setPeriodo] = useState(periodoInicial());
-  const { loading, error, data, reintentar } = useDashboardCache(periodo);
+  const [modo, setModo] = useState("personal");
+  const { loading, error, data, reintentar } = useDashboardCache(periodo, modo);
 
   function cambiarPeriodo(nuevoPeriodo) {
     setPeriodo(nuevoPeriodo);
@@ -113,6 +114,32 @@ export default function App() {
             </button>
           ))}
         </div>
+        {data?.puede_ver_equipo && (
+          <div className="glass rounded-full p-1 flex gap-1">
+            <button
+              type="button"
+              onClick={() => setModo("personal")}
+              className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors duration-200 ${
+                modo === "personal"
+                  ? "bg-xuma-green-dark text-xuma-bg-dark"
+                  : "text-white/60 hover:text-white/90"
+              }`}
+            >
+              Mi operación
+            </button>
+            <button
+              type="button"
+              onClick={() => setModo("equipo")}
+              className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors duration-200 ${
+                modo === "equipo"
+                  ? "bg-xuma-green-dark text-xuma-bg-dark"
+                  : "text-white/60 hover:text-white/90"
+              }`}
+            >
+              Vista equipo
+            </button>
+          </div>
+        )}
       </header>
 
       <main className="px-4 md:px-6 py-4 max-w-[1900px] mx-auto">

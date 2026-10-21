@@ -44,3 +44,23 @@ def es_supervisor_televentas(current: dict) -> bool:
     portal (acceso total, igual que en el resto del CRM -- ver
     _apps_permitidas en CRMXuma/backend/app/routers/auth.py)."""
     return current.get("admin_alcance") == "televentas" or current.get("rol") == "superadmin"
+
+
+# Usuarios del área de televentas que pueden alternar a la vista administrativa
+# (equipo, con facturación) además de su vista personal. Lista por id_persona
+# del directorio (el `sub` del JWT). Martha y Jeam Paul ya entran por ser
+# supervisor/superadmin; Kevin, Isaac y Orlando se habilitan aquí a pedido del
+# dueño del proyecto (2026-10-21).
+USUARIOS_VISTA_ADMINISTRATIVA = {30, 27, 3, 28, 31, 29}  # Martha, Jeam Paul (x2), Kevin, Isaac, Orlando
+
+
+def puede_ver_vista_equipo(current: dict) -> bool:
+    """True si el usuario puede solicitar la vista 'equipo' (administrativa)
+    del tablero, ya sea por ser supervisor/superadmin o por estar en la lista
+    de usuarios habilitados."""
+    if es_supervisor_televentas(current):
+        return True
+    try:
+        return int(current.get("sub")) in USUARIOS_VISTA_ADMINISTRATIVA
+    except (TypeError, ValueError):
+        return False

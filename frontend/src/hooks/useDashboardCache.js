@@ -7,10 +7,11 @@ import { obtenerDashboard } from "../services/comoVamos";
  * no quedarse con datos viejos si el usuario se queda un rato en la
  * pestaña. Antes cada cambio de mes repetía todo el pipeline pesado del
  * backend desde cero (leer_televentas + metas + tarifas + proyección). */
-export function useDashboardCache(periodo) {
+export function useDashboardCache(periodo, modo) {
   const cache = useRef(new Map());
-  const [data, setData] = useState(() => cache.current.get(periodo) ?? null);
-  const [loading, setLoading] = useState(!cache.current.has(periodo));
+  const clave = `${periodo}::${modo || "auto"}`;
+  const [data, setData] = useState(() => cache.current.get(clave) ?? null);
+  const [loading, setLoading] = useState(!cache.current.has(clave));
   const [error, setError] = useState(null);
   const [intento, setIntento] = useState(0);
 
@@ -20,10 +21,10 @@ export function useDashboardCache(periodo) {
       if (mostrarSpinner) setLoading(true);
       setError(null);
 
-      obtenerDashboard(periodo)
+      obtenerDashboard(periodo, null, modo)
         .then((res) => {
           if (!vivo) return;
-          cache.current.set(periodo, res);
+          cache.current.set(clave, res);
           setData(res);
           setLoading(false);
         })
@@ -37,21 +38,19 @@ export function useDashboardCache(periodo) {
         vivo = false;
       };
     },
-    [periodo]
+    [periodo, modo, clave]
   );
 
   useEffect(() => {
-    const enCache = cache.current.get(periodo);
+    const enCache = cache.current.get(clave);
     if (enCache) {
-      // Cambio a un mes ya visitado: se ve de inmediato con lo cacheado,
-      // y se refresca calladito por si cambió algo desde la última vez.
       setData(enCache);
       setLoading(false);
       return cargar(false);
     }
     return cargar(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [periodo, intento, cargar]);
+  }, [periodo, modo, intento, cargar]);
 
   return { data, loading, error, reintentar: () => setIntento((n) => n + 1) };
 }
