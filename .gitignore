@@ -23,3 +23,13 @@ logs/
 # Editor / IDE
 .vscode/
 .claude/scheduled_tasks.lock
+# Contexto de IA (privado)
+docs/ai-context/raw/
+docs/ai-context/sesiones.md
+
+# Canceladas GUI (build artifacts / config local)
+tools/canceladas_gui/build/
+tools/canceladas_gui/dist/
+tools/canceladas_gui/.venv/
+tools/canceladas_gui/settings.json
+tools/canceladas_gui/__pycache__/

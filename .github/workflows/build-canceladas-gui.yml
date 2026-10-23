@@ -1,0 +1,48 @@
+name: Build Canceladas GUI
+
+on:
+  push:
+    tags:
+      - "gui-v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r tools/canceladas_gui/requirements.txt
+          pip install pyinstaller
+
+      - name: Build exe
+        working-directory: tools/canceladas_gui
+        run: python -m PyInstaller --onefile --windowed --name "CargarCanceladas" --clean --noconfirm app.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CargarCanceladas
+          path: tools/canceladas_gui/dist/CargarCanceladas.exe
+
+      - name: Create release (on tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: tools/canceladas_gui/dist/CargarCanceladas.exe
+          body: |
+            Ejecutable standalone de la herramienta "Cargar Canceladas".
+            No requiere Python ni instalación: descarga el .exe y ejecútalo.
+            Configura la conexión a la BD la primera vez (Ajustes).

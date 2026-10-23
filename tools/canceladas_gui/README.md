@@ -3,7 +3,16 @@
 Herramienta para actualizar la información de auditoría (canceladas) en la base
 de datos, desde cualquier PC, con un solo botón.
 
-## Requisitos
+## Descargar ejecutable (.exe) — sin instalar Python
+
+Si no quieres instalar Python, descarga el ejecutable standalone:
+
+1. Ve a: https://github.com/JeamPaulLabs/AutoCV_Televentas/releases
+2. Descarga `CargarCanceladas.exe` de la última versión.
+3. Ejecútalo directamente (no requiere instalación).
+
+> El .exe se genera automáticamente en GitHub Actions cuando se publica un tag
+> `gui-v*`. Si no hay release aún, usa la opción de Python de abajo.
 
 - Windows (probado en Windows 10/11)
 - Python 3.10+ (https://www.python.org/downloads/) — marcar "Add python.exe to PATH"
