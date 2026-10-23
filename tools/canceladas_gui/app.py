@@ -393,8 +393,8 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Actualizar auditoría — Canceladas")
-        self.geometry("720x620")
-        self.minsize(640, 520)
+        self.geometry("780x620")
+        self.minsize(700, 520)
         self.configure(bg=BG)
         self.cfg = cargar_settings()
         self._build_styles()
@@ -441,14 +441,14 @@ class App(tk.Tk):
         self.left_panel = tk.Frame(self.container, bg=BG)
         self.left_panel.pack(side="left", fill="both", expand=True)
 
-        self.right_panel = tk.Frame(self.container, bg=BG, width=340)
+        self.right_panel = tk.Frame(self.container, bg=BG, width=400)
         self.right_panel.pack(side="right", fill="y", padx=(10, 0))
         self.right_panel.pack_propagate(False)
 
         lf_log = ttk.LabelFrame(self.right_panel, text="Log")
         lf_log.pack(fill="both", expand=True)
         self.log = tk.Text(lf_log, wrap="word", bg="#0b1220", fg="#22c55e",
-                           font=("Consolas", 9), insertbackground=TEXT, relief="flat", padx=8, pady=6)
+                           font=("Consolas", 10), insertbackground=TEXT, relief="flat", padx=8, pady=6)
         self.log.pack(fill="both", expand=True)
 
         self.view_simple = tk.Frame(self.left_panel, bg=BG)
