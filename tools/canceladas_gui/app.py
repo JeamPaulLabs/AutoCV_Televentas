@@ -5,8 +5,8 @@ Uso:
     python app.py
     (o doble clic en run.bat en Windows)
 
-Comprueba las dependencias, permite configurar la ubicación del Excel (ruta o URL)
-y la conexión a la base de datos, y ejecuta la carga con un botón.
+Primera vez: se muestra la configuración. Después solo se muestra un botón
+"Actualizar auditoría" y un botón "Ajustes" para cambiar la configuración.
 """
 from __future__ import annotations
 
@@ -65,7 +65,6 @@ ACCENT_HOVER = "#0fb80f"
 TEXT = "#f1f5f9"
 MUTED = "#94a3b8"
 RED = "#ef4444"
-AMBER = "#f59e0b"
 GREEN = "#22c55e"
 
 
@@ -376,6 +375,11 @@ def check_deps():
     return estado
 
 
+def configuracion_completa(cfg):
+    return bool(cfg.get("archivo") and cfg.get("host") and cfg.get("database")
+                and cfg.get("user") and cfg.get("password"))
+
+
 # ---------- GUI ----------
 try:
     import tkinter as tk
@@ -389,13 +393,18 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Actualizar auditoría — Canceladas")
-        self.geometry("780x760")
-        self.minsize(700, 600)
+        self.geometry("720x620")
+        self.minsize(640, 520)
         self.configure(bg=BG)
         self.cfg = cargar_settings()
         self._build_styles()
         self._build()
         self._refresh_deps()
+        # Vista inicial según si ya hay configuración
+        if configuracion_completa(self.cfg):
+            self.mostrar_simple()
+        else:
+            self.mostrar_config()
 
     def _build_styles(self):
         style = ttk.Style(self)
@@ -409,7 +418,7 @@ class App(tk.Tk):
         style.configure("TLabelframe", background=CARD, foreground=TEXT, bordercolor=CARD2, relief="flat")
         style.configure("TLabelframe.Label", background=CARD, foreground=ACCENT, font=("Segoe UI", 10, "bold"))
         style.configure("TEntry", fieldbackground=CARD2, foreground=TEXT, bordercolor=CARD2, insertcolor=TEXT)
-        style.configure("TButton", background=ACCENT, foreground="#0b1220", font=("Segoe UI", 10, "bold"), padding=6, borderwidth=0)
+        style.configure("TButton", background=ACCENT, foreground="#0b1220", font=("Segoe UI", 10, "bold"), padding=8, borderwidth=0)
         style.map("TButton", background=[("active", ACCENT_HOVER), ("disabled", "#475569")])
         style.configure("Secondary.TButton", background=CARD2, foreground=TEXT, padding=6)
         style.map("Secondary.TButton", background=[("active", "#334155")])
@@ -425,11 +434,77 @@ class App(tk.Tk):
         tk.Label(header, text="Xuma · Como Vamos Televentas", bg=CARD, fg=MUTED,
                  font=("Segoe UI", 9)).pack(side="right", padx=12)
 
-        body = tk.Frame(self, bg=BG)
-        body.pack(fill="both", expand=True, padx=14, pady=10)
+        # Contenedor principal que alterna entre vistas
+        self.container = tk.Frame(self, bg=BG)
+        self.container.pack(fill="both", expand=True, padx=14, pady=10)
 
-        # --- Dependencias ---
-        lf = ttk.LabelFrame(body, text="1. Dependencias")
+        self.left_panel = tk.Frame(self.container, bg=BG)
+        self.left_panel.pack(side="left", fill="both", expand=True)
+
+        self.right_panel = tk.Frame(self.container, bg=BG, width=340)
+        self.right_panel.pack(side="right", fill="y", padx=(10, 0))
+        self.right_panel.pack_propagate(False)
+
+        lf_log = ttk.LabelFrame(self.right_panel, text="Log")
+        lf_log.pack(fill="both", expand=True)
+        self.log = tk.Text(lf_log, wrap="word", bg="#0b1220", fg="#22c55e",
+                           font=("Consolas", 9), insertbackground=TEXT, relief="flat", padx=8, pady=6)
+        self.log.pack(fill="both", expand=True)
+
+        self.view_simple = tk.Frame(self.left_panel, bg=BG)
+        self.view_config = tk.Frame(self.left_panel, bg=BG)
+
+        self._build_simple(self.view_simple)
+        self._build_config(self.view_config)
+
+        # Footer
+        footer = tk.Frame(self, bg=CARD, height=24)
+        footer.pack(fill="x", side="bottom")
+        footer.pack_propagate(False)
+        tk.Label(footer, text="settings.json (local, no se sube a git) · Sin datos personales del asegurado",
+                 bg=CARD, fg=MUTED, font=("Segoe UI", 8)).pack(side="left", padx=12, pady=4)
+
+    # ---------- Vista simple (ejecutar) ----------
+    def _build_simple(self, parent):
+        # Tarjeta de estado de configuración
+        self.card_estado = tk.Frame(parent, bg=CARD, padx=14, pady=12)
+        self.card_estado.pack(fill="x", pady=(0, 10))
+        tk.Label(self.card_estado, text="Configuración actual", bg=CARD, fg=ACCENT,
+                 font=("Segoe UI", 11, "bold")).pack(anchor="w")
+        self.lbl_estado = tk.Label(self.card_estado, text="", bg=CARD, fg=TEXT,
+                                  font=("Segoe UI", 10), justify="left", anchor="w")
+        self.lbl_estado.pack(anchor="w", pady=(4, 0))
+
+        # Botón principal
+        self.btn_ejecutar = ttk.Button(parent, text="Actualizar auditoría (cargar canceladas)",
+                                       command=self.ejecutar)
+        self.btn_ejecutar.pack(fill="x", pady=6, ipady=6)
+
+        self.progress = ttk.Progressbar(parent, mode="indeterminate", length=200)
+        self.progress.pack(fill="x", pady=4)
+
+        # Botón ajustes
+        ttk.Button(parent, text="⚙ Ajustes", command=self.mostrar_config, style="Secondary.TButton").pack(anchor="e", pady=4)
+
+    def _actualizar_estado(self):
+        cfg = cargar_settings()
+        if configuracion_completa(cfg):
+            archivo = cfg.get("archivo", "")
+            host = cfg.get("host", "")
+            port = cfg.get("port", "")
+            ultima = cfg.get("ultima_actualizacion", "nunca")
+            txt = (f"Archivo: {archivo}\n"
+                   f"Base de datos: {host}:{port} / {cfg.get('database','')}\n"
+                   f"Usuario: {cfg.get('user','')}\n"
+                   f"Última actualización: {ultima}")
+        else:
+            txt = "Sin configurar. Pulsa 'Ajustes' para configurar."
+        self.lbl_estado.config(text=txt)
+
+    # ---------- Vista de configuración ----------
+    def _build_config(self, parent):
+        # Dependencias
+        lf = ttk.LabelFrame(parent, text="1. Dependencias")
         lf.pack(fill="x", pady=6)
         self.dep_labels = {}
         for lib in ["python", "openpyxl", "pandas", "psycopg2", "dotenv"]:
@@ -441,8 +516,8 @@ class App(tk.Tk):
             self.dep_labels[lib] = lbl
         ttk.Button(lf, text="Instalar dependencias faltantes", command=self.instalar_deps).pack(anchor="w", pady=6)
 
-        # --- Configuración ---
-        cf = ttk.LabelFrame(body, text="2. Configuración")
+        # Configuración
+        cf = ttk.LabelFrame(parent, text="2. Configuración")
         cf.pack(fill="x", pady=6)
         self._entry(cf, "Archivo Excel (ruta o URL):", "archivo", width=52)
         ttk.Button(cf, text="Examinar...", command=self.examinar, style="Secondary.TButton").pack(anchor="w", pady=2)
@@ -456,28 +531,18 @@ class App(tk.Tk):
         btnrow.pack(fill="x", pady=4)
         ttk.Button(btnrow, text="Auto-detectar perfil", command=self.auto_detectar, style="Secondary.TButton").pack(side="left", padx=2)
         ttk.Button(btnrow, text="Probar conexión", command=self.probar_conexion, style="Secondary.TButton").pack(side="left", padx=2)
-        ttk.Button(btnrow, text="Guardar configuración", command=self.guardar).pack(side="left", padx=2)
+        ttk.Button(btnrow, text="Guardar y volver", command=self.guardar_y_volver).pack(side="left", padx=2)
 
-        # --- Acción ---
-        af = ttk.LabelFrame(body, text="3. Ejecutar")
-        af.pack(fill="x", pady=6)
-        self.progress = ttk.Progressbar(af, mode="indeterminate", length=200)
-        self.progress.pack(fill="x", pady=4)
-        ttk.Button(af, text="Actualizar auditoría (cargar canceladas)", command=self.ejecutar).pack(anchor="w", pady=4)
+    def mostrar_simple(self):
+        self.view_config.pack_forget()
+        self.view_simple.pack(fill="both", expand=True)
+        self._actualizar_estado()
+        self._refresh_deps()
 
-        # --- Log ---
-        lf2 = ttk.LabelFrame(body, text="Log")
-        lf2.pack(fill="both", expand=True, pady=6)
-        self.log = tk.Text(lf2, height=14, wrap="word", bg="#0b1220", fg="#22c55e",
-                           font=("Consolas", 9), insertbackground=TEXT, relief="flat", padx=8, pady=6)
-        self.log.pack(fill="both", expand=True)
-
-        # Footer
-        footer = tk.Frame(self, bg=CARD, height=28)
-        footer.pack(fill="x", side="bottom")
-        footer.pack_propagate(False)
-        tk.Label(footer, text="settings.json (local, no se sube a git) · Sin datos personales del asegurado",
-                 bg=CARD, fg=MUTED, font=("Segoe UI", 8)).pack(side="left", padx=12, pady=6)
+    def mostrar_config(self):
+        self.view_simple.pack_forget()
+        self.view_config.pack(fill="both", expand=True)
+        self._refresh_deps()
 
     def _entry(self, parent, label, key, width=40, show=None):
         f = tk.Frame(parent, bg=CARD)
@@ -520,7 +585,7 @@ class App(tk.Tk):
 
     def instalar_deps(self):
         self._log("Instalando dependencias...")
-        self.progress.start(10)
+        self.progress.start(10) if hasattr(self, "progress") else None
         try:
             subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", str(HERE / "requirements.txt")])
             self._log("Dependencias instaladas.")
@@ -528,7 +593,8 @@ class App(tk.Tk):
             self._log("Error instalando: " + str(e))
             messagebox.showerror("Error", str(e))
         finally:
-            self.progress.stop()
+            if hasattr(self, "progress"):
+                self.progress.stop()
         self._refresh_deps()
 
     def examinar(self):
@@ -554,6 +620,10 @@ class App(tk.Tk):
         self.cfg = cfg
         self._log("Configuración guardada.")
 
+    def guardar_y_volver(self):
+        self.guardar()
+        self.mostrar_simple()
+
     def auto_detectar(self):
         perfil, host, port = _resolver_perfil()
         if host is None:
@@ -568,7 +638,6 @@ class App(tk.Tk):
 
     def probar_conexion(self):
         cfg = self._cfg_actual()
-        self.progress.start(10)
         try:
             conn = conectar_db(cfg)
             conn.close()
@@ -577,8 +646,6 @@ class App(tk.Tk):
         except Exception as e:
             self._log("Error de conexión: " + str(e))
             messagebox.showerror("Conexión", str(e))
-        finally:
-            self.progress.stop()
 
     def _cfg_actual(self):
         return {
@@ -593,7 +660,13 @@ class App(tk.Tk):
 
     def ejecutar(self):
         cfg = self._cfg_actual()
-        self.guardar()
+        # Usar la config guardada si la actual está vacía
+        if not configuracion_completa(cfg):
+            cfg = cargar_settings()
+        if not configuracion_completa(cfg):
+            messagebox.showwarning("Configuración", "Configura primero (Ajustes).")
+            self.mostrar_config()
+            return
         self._log("=== Iniciando carga ===")
         self.progress.start(10)
         try:
@@ -648,6 +721,12 @@ class App(tk.Tk):
             conn.close()
             self._log(f"Filas escritas/actualizadas: {n}")
             self._log("OK")
+            # guardar última actualización
+            cfg2 = cargar_settings()
+            cfg2["ultima_actualizacion"] = dt.datetime.now().strftime("%Y-%m-%d %H:%M")
+            guardar_settings(cfg2)
+            self.cfg = cfg2
+            self._actualizar_estado()
             messagebox.showinfo("Listo", f"Carga completada: {n} filas.")
         except Exception as e:
             self._log("ERROR: " + str(e))
