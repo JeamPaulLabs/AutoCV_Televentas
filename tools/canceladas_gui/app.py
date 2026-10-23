@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import datetime as dt
 import json
-import os
 import re
 import shutil
 import subprocess
@@ -56,6 +55,18 @@ MESES_ES = {
     7: "JULIO", 8: "AGOSTO", 9: "SEPTIEMBRE", 10: "OCTUBRE", 11: "NOVIEMBRE",
     12: "DICIEMBRE",
 }
+
+# ---------- Colores (tema Xuma dark) ----------
+BG = "#0f172a"
+CARD = "#1e293b"
+CARD2 = "#273449"
+ACCENT = "#0ca30c"
+ACCENT_HOVER = "#0fb80f"
+TEXT = "#f1f5f9"
+MUTED = "#94a3b8"
+RED = "#ef4444"
+AMBER = "#f59e0b"
+GREEN = "#22c55e"
 
 
 def normalizar_nombre_hoja(s):
@@ -253,7 +264,6 @@ def obtener_archivo(ruta_o_url):
     p = Path(s)
     if not p.exists():
         raise FileNotFoundError(f"No existe el archivo: {p}")
-    # copiar para evitar bloqueo de Excel
     tmp = Path(tempfile.gettempdir()) / "canceladas_gui_archivo.xlsx"
     shutil.copy2(p, tmp)
     return tmp
@@ -269,7 +279,6 @@ def _alcanzable(host, port, timeout=4):
 
 
 def _resolver_perfil():
-    """Devuelve ('oficina', host, port) o ('casa', host, port) o (None, None, None)."""
     if _alcanzable("20.7.15.40", 5432):
         return "oficina", "20.7.15.40", 5432
     if _alcanzable("127.0.0.1", 15432):
@@ -279,9 +288,8 @@ def _resolver_perfil():
 
 def conectar_db(cfg):
     import psycopg2
-    host = cfg["host"]
-    port = cfg["port"]
-    # Auto-detectar perfil si no se especificó host
+    host = (cfg.get("host") or "").strip()
+    port = (cfg.get("port") or "").strip()
     if not host:
         perfil, h, p = _resolver_perfil()
         if h is None:
@@ -294,13 +302,11 @@ def conectar_db(cfg):
             user=cfg["user"], password=cfg["password"], connect_timeout=8,
         )
     except Exception as e:
-        # Reintentar con el otro perfil si el directo falla
-        if host == "20.7.15.40":
-            if _alcanzable("127.0.0.1", 15432):
-                return psycopg2.connect(
-                    host="127.0.0.1", port=15432, dbname=cfg["database"],
-                    user=cfg["user"], password=cfg["password"], connect_timeout=8,
-                )
+        if host == "20.7.15.40" and _alcanzable("127.0.0.1", 15432):
+            return psycopg2.connect(
+                host="127.0.0.1", port=15432, dbname=cfg["database"],
+                user=cfg["user"], password=cfg["password"], connect_timeout=8,
+            )
         raise RuntimeError(f"Error de conexión a {host}:{port}: {e}")
 
 
@@ -311,6 +317,7 @@ def asegurar_tabla(conn):
 
 
 def upsert(conn, df):
+    import pandas as pd
     if df.empty:
         return 0
     cols = ["periodo", "numero_contrato", "asesor", "producto", "fecha_venta",
@@ -333,9 +340,6 @@ def upsert(conn, df):
                 v = r.get(c)
                 if isinstance(v, float) and v != v:
                     v = None
-                if isinstance(v, (pd_timestamp() if False else None,)):
-                    pass
-                import pandas as pd
                 if isinstance(v, (pd.Timestamp,)):
                     v = None if pd.isna(v) else v.date()
                 if c in ("fecha_venta", "fecha_gestion") and not isinstance(v, (dt.date, type(None))):
@@ -345,15 +349,6 @@ def upsert(conn, df):
             n += 1
         conn.commit()
     return n
-
-
-# ---------- GUI ----------
-try:
-    import tkinter as tk
-    from tkinter import ttk, filedialog, messagebox
-except Exception as e:
-    print("tkinter no disponible:", e)
-    sys.exit(1)
 
 
 def cargar_settings():
@@ -371,7 +366,6 @@ def guardar_settings(cfg):
 
 def check_deps():
     estado = {}
-    # python
     estado["python"] = sys.version.split()[0]
     for lib in ["openpyxl", "pandas", "psycopg2", "dotenv"]:
         try:
@@ -382,71 +376,126 @@ def check_deps():
     return estado
 
 
+# ---------- GUI ----------
+try:
+    import tkinter as tk
+    from tkinter import ttk, filedialog, messagebox
+except Exception as e:
+    print("tkinter no disponible:", e)
+    sys.exit(1)
+
+
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Actualizar auditoría — Canceladas (Xuma)")
-        self.geometry("720x640")
-        self.resizable(True, True)
+        self.title("Actualizar auditoría — Canceladas")
+        self.geometry("780x760")
+        self.minsize(700, 600)
+        self.configure(bg=BG)
         self.cfg = cargar_settings()
+        self._build_styles()
         self._build()
         self._refresh_deps()
 
+    def _build_styles(self):
+        style = ttk.Style(self)
+        try:
+            style.theme_use("clam")
+        except Exception:
+            pass
+        style.configure(".", background=BG, foreground=TEXT, font=("Segoe UI", 10))
+        style.configure("TFrame", background=BG)
+        style.configure("TLabel", background=BG, foreground=TEXT)
+        style.configure("TLabelframe", background=CARD, foreground=TEXT, bordercolor=CARD2, relief="flat")
+        style.configure("TLabelframe.Label", background=CARD, foreground=ACCENT, font=("Segoe UI", 10, "bold"))
+        style.configure("TEntry", fieldbackground=CARD2, foreground=TEXT, bordercolor=CARD2, insertcolor=TEXT)
+        style.configure("TButton", background=ACCENT, foreground="#0b1220", font=("Segoe UI", 10, "bold"), padding=6, borderwidth=0)
+        style.map("TButton", background=[("active", ACCENT_HOVER), ("disabled", "#475569")])
+        style.configure("Secondary.TButton", background=CARD2, foreground=TEXT, padding=6)
+        style.map("Secondary.TButton", background=[("active", "#334155")])
+        style.configure("TProgressbar", background=ACCENT, troughcolor=CARD2, bordercolor=BG)
+
     def _build(self):
-        pad = {"padx": 8, "pady": 4}
+        # Header
+        header = tk.Frame(self, bg=CARD, height=56)
+        header.pack(fill="x")
+        header.pack_propagate(False)
+        tk.Label(header, text="  Actualizar auditoría — Canceladas", bg=CARD, fg=TEXT,
+                 font=("Segoe UI", 14, "bold")).pack(side="left", pady=12)
+        tk.Label(header, text="Xuma · Como Vamos Televentas", bg=CARD, fg=MUTED,
+                 font=("Segoe UI", 9)).pack(side="right", padx=12)
+
+        body = tk.Frame(self, bg=BG)
+        body.pack(fill="both", expand=True, padx=14, pady=10)
+
         # --- Dependencias ---
-        lf = ttk.LabelFrame(self, text="1. Dependencias")
-        lf.pack(fill="x", **pad)
+        lf = ttk.LabelFrame(body, text="1. Dependencias")
+        lf.pack(fill="x", pady=6)
         self.dep_labels = {}
         for lib in ["python", "openpyxl", "pandas", "psycopg2", "dotenv"]:
-            row = ttk.Frame(lf)
-            row.pack(fill="x")
-            ttk.Label(row, text=lib, width=14).pack(side="left")
-            lbl = ttk.Label(row, text="...", width=20)
+            row = tk.Frame(lf, bg=CARD)
+            row.pack(fill="x", pady=1)
+            tk.Label(row, text=lib, bg=CARD, fg=TEXT, width=14, anchor="w", font=("Segoe UI", 10)).pack(side="left")
+            lbl = tk.Label(row, text="...", bg=CARD, fg=MUTED, width=22, anchor="w", font=("Segoe UI", 10))
             lbl.pack(side="left")
             self.dep_labels[lib] = lbl
-        ttk.Button(lf, text="Instalar dependencias faltantes", command=self.instalar_deps).pack(anchor="w", pady=4)
+        ttk.Button(lf, text="Instalar dependencias faltantes", command=self.instalar_deps).pack(anchor="w", pady=6)
 
         # --- Configuración ---
-        cf = ttk.LabelFrame(self, text="2. Configuración")
-        cf.pack(fill="x", **pad)
-        self._entry(cf, "Archivo Excel (ruta o URL):", "archivo", width=60)
-        ttk.Button(cf, text="Examinar...", command=self.examinar).pack(anchor="w", pady=2)
+        cf = ttk.LabelFrame(body, text="2. Configuración")
+        cf.pack(fill="x", pady=6)
+        self._entry(cf, "Archivo Excel (ruta o URL):", "archivo", width=52)
+        ttk.Button(cf, text="Examinar...", command=self.examinar, style="Secondary.TButton").pack(anchor="w", pady=2)
         self._entry(cf, "Mes (YYYY-MM):", "periodo", width=12)
-        ttk.Label(cf, text="Dejar vacío = mes en curso").pack(anchor="w")
+        tk.Label(cf, text="Dejar vacío = mes en curso", bg=CARD, fg=MUTED, font=("Segoe UI", 8)).pack(anchor="w")
         for lbl, key, show in [("Host BD:", "host", None), ("Puerto:", "port", None),
                                ("Base de datos:", "database", None), ("Usuario:", "user", None),
                                ("Contraseña:", "password", "*")]:
             self._entry(cf, lbl, key, width=30, show=show)
-        ttk.Button(cf, text="Auto-detectar perfil (oficina/casa)", command=self.auto_detectar).pack(anchor="w", pady=2)
-        ttk.Button(cf, text="Probar conexión", command=self.probar_conexion).pack(anchor="w", pady=2)
-        ttk.Button(cf, text="Guardar configuración", command=self.guardar).pack(anchor="w", pady=2)
+        btnrow = tk.Frame(cf, bg=CARD)
+        btnrow.pack(fill="x", pady=4)
+        ttk.Button(btnrow, text="Auto-detectar perfil", command=self.auto_detectar, style="Secondary.TButton").pack(side="left", padx=2)
+        ttk.Button(btnrow, text="Probar conexión", command=self.probar_conexion, style="Secondary.TButton").pack(side="left", padx=2)
+        ttk.Button(btnrow, text="Guardar configuración", command=self.guardar).pack(side="left", padx=2)
 
         # --- Acción ---
-        af = ttk.LabelFrame(self, text="3. Ejecutar")
-        af.pack(fill="x", **pad)
+        af = ttk.LabelFrame(body, text="3. Ejecutar")
+        af.pack(fill="x", pady=6)
+        self.progress = ttk.Progressbar(af, mode="indeterminate", length=200)
+        self.progress.pack(fill="x", pady=4)
         ttk.Button(af, text="Actualizar auditoría (cargar canceladas)", command=self.ejecutar).pack(anchor="w", pady=4)
 
         # --- Log ---
-        lf2 = ttk.LabelFrame(self, text="Log")
-        lf2.pack(fill="both", expand=True, **pad)
-        self.log = tk.Text(lf2, height=14, wrap="word")
+        lf2 = ttk.LabelFrame(body, text="Log")
+        lf2.pack(fill="both", expand=True, pady=6)
+        self.log = tk.Text(lf2, height=14, wrap="word", bg="#0b1220", fg="#22c55e",
+                           font=("Consolas", 9), insertbackground=TEXT, relief="flat", padx=8, pady=6)
         self.log.pack(fill="both", expand=True)
-        sb = ttk.Scrollbar(self.log, command=self.log.yview)
-        sb.pack(side="right", fill="y")
-        self.log.config(yscrollcommand=sb.set)
+
+        # Footer
+        footer = tk.Frame(self, bg=CARD, height=28)
+        footer.pack(fill="x", side="bottom")
+        footer.pack_propagate(False)
+        tk.Label(footer, text="settings.json (local, no se sube a git) · Sin datos personales del asegurado",
+                 bg=CARD, fg=MUTED, font=("Segoe UI", 8)).pack(side="left", padx=12, pady=6)
 
     def _entry(self, parent, label, key, width=40, show=None):
-        f = ttk.Frame(parent)
-        f.pack(fill="x", pady=1)
-        ttk.Label(f, text=label, width=26).pack(side="left")
-        e = ttk.Entry(f, width=width, show=show or "")
-        e.pack(side="left", fill="x", expand=True)
+        f = tk.Frame(parent, bg=CARD)
+        f.pack(fill="x", pady=2)
+        tk.Label(f, text=label, bg=CARD, fg=TEXT, width=26, anchor="w", font=("Segoe UI", 10)).pack(side="left")
+        e = tk.Entry(f, width=width, show=show or "", bg=CARD2, fg=TEXT, insertbackground=TEXT,
+                     relief="flat", highlightthickness=1, highlightbackground=CARD2, highlightcolor=ACCENT,
+                     font=("Segoe UI", 10))
+        e.pack(side="left", fill="x", expand=True, ipady=3)
         val = self.cfg.get(key, "")
         if key == "periodo" and not val:
             val = dt.date.today().strftime("%Y-%m")
         if key == "port" and not val:
             val = "5432"
+        if key == "host" and not val:
+            val = "20.7.15.40"
+        if key == "database" and not val:
+            val = "DataCenter_Vanti"
         e.insert(0, str(val))
         setattr(self, f"e_{key}", e)
 
@@ -460,20 +509,26 @@ class App(tk.Tk):
 
     def _refresh_deps(self):
         st = check_deps()
-        self.dep_labels["python"].config(text=st["python"])
+        self.dep_labels["python"].config(text=st["python"], fg=GREEN)
         for lib in ["openpyxl", "pandas", "psycopg2", "dotenv"]:
             v = st[lib]
-            self.dep_labels[lib].config(text=(v if v else "FALTA"))
+            if v:
+                self.dep_labels[lib].config(text=v, fg=GREEN)
+            else:
+                self.dep_labels[lib].config(text="FALTA", fg=RED)
         self._log("Dependencias: " + ", ".join(f"{k}={v}" for k, v in st.items()))
 
     def instalar_deps(self):
         self._log("Instalando dependencias...")
+        self.progress.start(10)
         try:
             subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", str(HERE / "requirements.txt")])
             self._log("Dependencias instaladas.")
         except Exception as e:
             self._log("Error instalando: " + str(e))
             messagebox.showerror("Error", str(e))
+        finally:
+            self.progress.stop()
         self._refresh_deps()
 
     def examinar(self):
@@ -513,6 +568,7 @@ class App(tk.Tk):
 
     def probar_conexion(self):
         cfg = self._cfg_actual()
+        self.progress.start(10)
         try:
             conn = conectar_db(cfg)
             conn.close()
@@ -521,6 +577,8 @@ class App(tk.Tk):
         except Exception as e:
             self._log("Error de conexión: " + str(e))
             messagebox.showerror("Conexión", str(e))
+        finally:
+            self.progress.stop()
 
     def _cfg_actual(self):
         return {
@@ -537,13 +595,13 @@ class App(tk.Tk):
         cfg = self._cfg_actual()
         self.guardar()
         self._log("=== Iniciando carga ===")
+        self.progress.start(10)
         try:
             periodo_txt = cfg["periodo"] or dt.date.today().strftime("%Y-%m")
             periodo = dt.datetime.strptime(periodo_txt, "%Y-%m").date().replace(day=1)
             archivo = obtener_archivo(cfg["archivo"])
             self._log(f"Periodo: {periodo:%Y-%m}")
             self._log(f"Archivo: {cfg['archivo']}")
-            self._log(f"Copia temporal: {archivo}")
 
             conn = conectar_db(cfg)
             asegurar_tabla(conn)
@@ -594,6 +652,8 @@ class App(tk.Tk):
         except Exception as e:
             self._log("ERROR: " + str(e))
             messagebox.showerror("Error", str(e))
+        finally:
+            self.progress.stop()
 
 
 if __name__ == "__main__":
