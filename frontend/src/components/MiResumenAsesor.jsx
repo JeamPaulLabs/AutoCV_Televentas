@@ -461,7 +461,7 @@ function SeccionVentas({ ventas, canceladas }) {
   );
 }
 
-export default function MiResumenAsesor({ resumen, detalleDiaDia, billetera, canceladasRevision }) {
+export default function MiResumenAsesor({ resumen, detalleDiaDia, billetera, canceladasRevision, otrosi }) {
   const ventas = detalleDiaDia || [];
   const rs = ventas.filter((v) => etiquetaProducto(v.producto).corto === "RS");
 
@@ -477,6 +477,13 @@ export default function MiResumenAsesor({ resumen, detalleDiaDia, billetera, can
   const sinMeta = conMeta && resumen.categoria === "SIN META";
   const color = !conMeta || sinMeta ? WARNING : semaforo(resumen.pct_cumpl_acumulado, resumen.pct_cump_ideal);
   const avance = conMeta ? Math.min(resumen.pct_cumpl_acumulado * 100, 100) : 0;
+  // El acumulado cuenta todos los estados (incluidas canceladas); se muestra
+  // desglosado para que se vea cuántas ventas siguen vigentes.
+  const nCanceladas = ventas.filter((v) => v.estado === "CANCELADA").length;
+  // Otrosí vigente: la comisión se habilita desde pct_minimo_comision de la meta
+  // individual -- se le ajusta la meta a todo asesor que tenga una.
+  const metaAjustada = otrosi && conMeta && !sinMeta && resumen.meta_mes > 0 ? resumen.meta_mes * otrosi.pct_minimo_comision : null;
+  const faltanAjustada = metaAjustada != null ? Math.max(Math.ceil(metaAjustada - resumen.acumulado), 0) : 0;
 
   return (
     <div className="space-y-4">
@@ -491,7 +498,19 @@ export default function MiResumenAsesor({ resumen, detalleDiaDia, billetera, can
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
             <StatTile label="Categoría" value={resumen.categoria} />
             <StatTile label="Meta del mes" value={fmtNumero(resumen.meta_mes)} />
-            <StatTile label="Acumulado" value={fmtNumero(resumen.acumulado)} destacado />
+            {metaAjustada != null && (
+              <StatTile
+                label={`Meta ajustada (${fmtPct(otrosi.pct_minimo_comision)})`}
+                value={fmtNumero(metaAjustada)}
+                sub={faltanAjustada === 0 ? "¡Ya la alcanzaste!" : `te faltan ${fmtNumero(faltanAjustada)}`}
+              />
+            )}
+            <StatTile
+              label="Acumulado"
+              value={fmtNumero(resumen.acumulado)}
+              sub={nCanceladas > 0 ? `${fmtNumero(resumen.acumulado - nCanceladas)} vigentes · ${fmtNumero(nCanceladas)} canceladas` : undefined}
+              destacado
+            />
             <StatTile label="Forecast de cierre" value={fmtNumero(resumen.forecast)} sub={fmtPct(resumen.pct_forecast) + " de la meta"} />
             {billetera?.total > 0 && (
               <StatTile

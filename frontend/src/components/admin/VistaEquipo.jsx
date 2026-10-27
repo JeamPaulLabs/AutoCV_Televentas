@@ -99,7 +99,7 @@ export default function VistaEquipo({ data, tema }) {
               <>
                 <AvanceEquipo data={data} />
                 <SeccionTitulo>Como vamos por asesor</SeccionTitulo>
-                <TablaAsesores filas={data.asesores} otrosi={data.otrosi} />
+                <TablaAsesores filas={data.asesores} otrosi={data.otrosi} detalle={data.detalle_asesor_estado} />
               </>
             ),
           },

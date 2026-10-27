@@ -2,7 +2,9 @@ import { fmtMoney, fmtNumero, fmtPct } from "../utils/formato";
 import { SEMAFORO, nivelSemaforo } from "../utils/semaforo";
 
 
-export default function TablaAsesores({ filas, otrosi }) {
+export default function TablaAsesores({ filas, otrosi, detalle = [] }) {
+  // Canceladas por asesor (el acumulado las cuenta; "Vigentes" es sin ellas).
+  const canceladas = new Map(detalle.map((d) => [d.asesor, d.CANCELADA || 0]));
   const ordenadas = [...filas].sort((a, b) => b.pct_cumpl_acumulado - a.pct_cumpl_acumulado);
 
   return (
@@ -21,7 +23,8 @@ export default function TablaAsesores({ filas, otrosi }) {
                 Meta ajustada
               </th>
             )}
-            <th className="px-2.5 py-1.5 font-semibold text-right">Acumulado</th>
+            <th className="px-2.5 py-1.5 font-semibold text-right" title="Todos los estados, incluidas canceladas">Acumulado</th>
+            <th className="px-2.5 py-1.5 font-semibold text-right" title="Acumulado sin las canceladas">Vigentes</th>
             <th className="px-2.5 py-1.5 font-semibold">% Cumpl.</th>
             <th className="px-2.5 py-1.5 font-semibold text-right">% Cumpl. ideal</th>
             <th className="px-2.5 py-1.5 font-semibold text-right">Venta/día</th>
@@ -56,6 +59,9 @@ export default function TablaAsesores({ filas, otrosi }) {
                   </td>
                 )}
                 <td className="px-2.5 py-1 text-right tabular-nums">{fmtNumero(fila.acumulado)}</td>
+                <td className="px-2.5 py-1 text-right tabular-nums" title={`${canceladas.get(fila.asesor) || 0} canceladas`}>
+                  {fmtNumero(fila.acumulado - (canceladas.get(fila.asesor) || 0))}
+                </td>
                 <td className="px-2.5 py-1">
                   <div className="flex items-center gap-1.5 min-w-[110px]">
                     <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">

@@ -106,6 +106,7 @@ export default function VistaAuditoria({ data }) {
               detalleDiaDia={datos.detalle_dia_dia}
               billetera={datos.billetera}
               canceladasRevision={datos.canceladas_revision}
+              otrosi={datos.otrosi}
             />
           </div>
           <div className="space-y-4 xl:sticky xl:top-20 xl:max-h-[calc(100vh-6rem)] xl:overflow-auto">
