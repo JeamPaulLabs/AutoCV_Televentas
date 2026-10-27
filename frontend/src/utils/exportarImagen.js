@@ -4,20 +4,33 @@ const ANCHO_MAX_PX = 2560;
 
 const siguienteCuadro = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
-/** Genera un PNG del nodo tal como se ve en pantalla (no se le cambia el ancho,
- * asi el tablero no se mueve al descargar), con fondo solido y la cabecera con
- * logo. La resolucion se ajusta para que la imagen mida ~2560 px de ancho.
- * Ver reglas `.capturando` en index.css. */
+/** Marca de tiempo local para los nombres de archivo: 20261027_153045. */
+export function marcaTiempo(fecha = new Date()) {
+  const p = (n) => String(n).padStart(2, "0");
+  return `${fecha.getFullYear()}${p(fecha.getMonth() + 1)}${p(fecha.getDate())}_${p(fecha.getHours())}${p(fecha.getMinutes())}${p(fecha.getSeconds())}`;
+}
+
+/** Genera un PNG del nodo con fondo solido y la cabecera con logo. Se captura una
+ * COPIA del nodo, fuera de pantalla y con el mismo ancho, para que el tablero
+ * visible no cambie ni parpadee mientras se descarga. La resolucion se ajusta
+ * para que la imagen mida ~2560 px de ancho. Ver reglas `.capturando` en index.css. */
 export async function nodoAPng(nodo, { fondo }) {
-  nodo.classList.add("capturando");
+  const ancho = nodo.offsetWidth;
+  const contenedor = document.createElement("div");
+  contenedor.setAttribute("aria-hidden", "true");
+  contenedor.style.cssText = `position:fixed;left:-100000px;top:0;width:${ancho}px;pointer-events:none;`;
+  const copia = nodo.cloneNode(true);
+  copia.classList.add("capturando");
+  contenedor.appendChild(copia);
+  document.body.appendChild(contenedor);
   try {
     await siguienteCuadro();
-    const pixelRatio = Math.min(3, Math.max(1, ANCHO_MAX_PX / nodo.offsetWidth));
-    const blob = await toBlob(nodo, { pixelRatio, backgroundColor: fondo, cacheBust: true });
+    const pixelRatio = Math.min(3, Math.max(1, ANCHO_MAX_PX / ancho));
+    const blob = await toBlob(copia, { pixelRatio, backgroundColor: fondo, cacheBust: true });
     if (!blob) throw new Error("No se pudo generar la imagen");
     return blob;
   } finally {
-    nodo.classList.remove("capturando");
+    contenedor.remove();
   }
 }
 

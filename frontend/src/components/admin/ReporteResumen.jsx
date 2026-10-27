@@ -6,6 +6,7 @@ import TablaFacturacion from "../TablaFacturacion";
 import { fmtDia, fmtMoney, fmtNumero, fmtPct, mesNombreDe } from "../../utils/formato";
 import logoClaro from "../../assets/logo-claro.png";
 import logoOscuro from "../../assets/logo-oscuro.png";
+import { marcaTiempo } from "../../utils/exportarImagen";
 import BarraExportar from "./BarraExportar";
 import PodioCard from "./PodioCard";
 import SeccionTitulo from "./SeccionTitulo";
@@ -297,7 +298,7 @@ export default function ReporteResumen({ data, tema, conFacturacion = true }) {
       objetivoRef={objetivo}
       tema={tema}
       insights={a.insights}
-      nombreArchivo={`como-vamos-televentas_${nombre.toLowerCase()}_${data.fecha_corte}.png`}
+      nombreArchivo={() => `como-vamos-${nombre.toLowerCase()}_${marcaTiempo()}.png`}
       textoWhatsApp={`COMO VAMOS · TELEVENTAS — ${nombre} · ${mes} · corte al ${data.fecha_corte}`}
     />
   );

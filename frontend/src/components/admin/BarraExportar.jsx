@@ -62,7 +62,7 @@ export default function BarraExportar({ objetivoRef, nombreArchivo, textoWhatsAp
     setOcupado(true);
     setAviso("");
     try {
-      descargarBlob(await generar(), nombreArchivo);
+      descargarBlob(await generar(), nombreArchivo());
     } catch (e) {
       setAviso(`No se pudo generar la imagen: ${e.message}`);
     } finally {
@@ -74,7 +74,7 @@ export default function BarraExportar({ objetivoRef, nombreArchivo, textoWhatsAp
     setOcupado(true);
     setAviso("");
     try {
-      const resultado = await enviarPorWhatsApp(await generar(), nombreArchivo, textoWhatsApp);
+      const resultado = await enviarPorWhatsApp(await generar(), nombreArchivo(), textoWhatsApp);
       setAviso(AVISO_WHATSAPP[resultado]);
     } catch (e) {
       setAviso(`No se pudo generar la imagen: ${e.message}`);
