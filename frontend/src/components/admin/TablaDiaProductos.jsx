@@ -135,7 +135,7 @@ export default function TablaDiaProductos({ filas }) {
       {dias.length === 0 ? (
         <div className="glass rounded-xl px-3 py-4 text-sm text-white/70">Sin ventas para este filtro.</div>
       ) : (
-        <div className="glass rounded-xl overflow-auto text-xs max-h-[calc(100vh-290px)]">
+        <div className="glass rounded-xl overflow-auto text-xs max-h-[560px]">
           <table className="w-full border-collapse">
             <thead className="sticky top-0 z-10">
               <tr className="tabla-header text-white text-left">
