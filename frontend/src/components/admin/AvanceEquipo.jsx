@@ -64,7 +64,7 @@ export default function AvanceEquipo({ data }) {
           </div>
         </div>
         <div className="text-right" title={nivel.texto}>
-          <div className="text-3xl font-extrabold tabular-nums" style={{ color: nivel.color }}>
+          <div className="text-3xl font-extrabold tabular-nums" style={{ color: nivel.colorTexto }}>
             <span aria-hidden="true">{nivel.icono}</span> {fmtPct(pct)}
           </div>
           <div className="text-[11px] text-white/70">Ideal a la fecha: {fmtPct(ideal)}</div>

@@ -68,7 +68,7 @@ export default function TablaAsesores({ filas, otrosi }) {
                       className="text-xs tabular-nums text-white/85 min-w-[56px]"
                       title={nivel.texto}
                     >
-                      <span aria-hidden="true" style={{ color: nivel.color }}>{nivel.icono}</span>{" "}
+                      <span aria-hidden="true" style={{ color: nivel.colorTexto }}>{nivel.icono}</span>{" "}
                       {fmtPct(fila.pct_cumpl_acumulado)}
                     </span>
                   </div>

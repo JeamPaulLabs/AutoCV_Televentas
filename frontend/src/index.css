@@ -102,3 +102,74 @@ body {
     box-shadow: 0 0 0 3px rgb(90 226 128 / 0.6), 0 8px 24px rgb(0 0 0 / 0.35);
   }
 }
+
+/* ---------- Tema claro ----------
+   Tailwind v4 deriva text-white/NN, bg-white/NN y border-white/NN de
+   --color-white (via color-mix); al redefinirla como tinta oscura, todo lo que
+   en oscuro es "blanco translúcido" pasa a ser "tinta translúcida" sin tocar
+   cada componente. Lo que sigue son los valores literales que no dependen de
+   esa variable. */
+:root {
+  --sem-bien-txt: #0ca30c;
+  --sem-alerta-txt: #fab219;
+  --sem-critico-txt: #e25555;
+}
+html.tema-claro {
+  --color-white: #0d1024;
+  --color-xuma-surface: #f3f5fb;
+  --color-xuma-surface-2: #e6eaf5;
+  --sem-bien-txt: #0a7a0a;
+  --sem-alerta-txt: #8a5a00;
+  --sem-critico-txt: #b02a2a;
+  color-scheme: light;
+}
+html.tema-claro body {
+  background:
+    radial-gradient(ellipse 1200px 700px at 15% -10%, rgb(18 1 128 / 0.07), transparent 60%),
+    radial-gradient(ellipse 900px 600px at 100% 10%, rgb(0 205 147 / 0.12), transparent 55%),
+    #f3f5fb;
+  color: #0d1024;
+}
+html.tema-claro .glass {
+  background: rgb(255 255 255 / 0.78);
+  border-color: rgb(13 16 36 / 0.12);
+  border-top-color: rgb(13 16 36 / 0.06);
+  box-shadow: 0 4px 16px rgb(13 16 36 / 0.08);
+}
+html.tema-claro .header-sticky {
+  background: rgb(255 255 255 / 0.88);
+  border-color: rgb(13 16 36 / 0.12);
+  box-shadow: 0 4px 16px rgb(13 16 36 / 0.10);
+}
+html.tema-claro .modal-solid {
+  background: rgb(255 255 255 / 0.98);
+  border-color: rgb(13 16 36 / 0.16);
+  box-shadow: 0 20px 50px rgb(13 16 36 / 0.25);
+}
+html.tema-claro .tabla-header { background: rgb(13 16 36 / 0.06); }
+html.tema-claro .text-xuma-green-light,
+html.tema-claro .text-xuma-green-dark { color: #007a58; }
+html.tema-claro .text-amber-100 { color: #6b4300; }
+html.tema-claro .text-amber-300\/80 { color: #8a5a00; }
+html.tema-claro .text-red-300 { color: #b02a2a; }
+html.tema-claro .bg-black\/60 { background: rgb(13 16 36 / 0.45); }
+
+/* ---------- Captura de imagen (descargar / WhatsApp) ----------
+   html-to-image no reproduce backdrop-filter ni los recortes con scroll: durante
+   la captura se pasa a fondo sólido y se despliegan las tablas completas. */
+.solo-captura { display: none; }
+.capturando .solo-captura { display: flex; }
+.capturando .no-captura { display: none !important; }
+.capturando { padding: 16px; }
+.capturando,
+.capturando * {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  animation: none !important;
+  transition: none !important;
+}
+.capturando .glass { background: rgb(20 24 52 / 0.96); box-shadow: none; }
+html.tema-claro .capturando .glass { background: #ffffff; }
+.capturando [class*="max-h-"] { max-height: none !important; }
+.capturando .overflow-auto,
+.capturando .overflow-y-auto { overflow: visible !important; }

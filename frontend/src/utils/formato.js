@@ -32,3 +32,12 @@ export function fmtDia(iso) {
   const mesCorto = d.toLocaleDateString("es-CO", { month: "short" }).replace(".", "");
   return `${sem} ${String(dia).padStart(2, "0")} ${mesCorto}`;
 }
+
+const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
+/** "2026-10-01" -> "Octubre 2026". */
+export function mesNombreDe(periodoIso) {
+  const [anio, mes] = String(periodoIso).split("-");
+  const nombre = MESES[Number(mes) - 1] || "";
+  return `${nombre.charAt(0).toUpperCase()}${nombre.slice(1)} ${anio}`;
+}

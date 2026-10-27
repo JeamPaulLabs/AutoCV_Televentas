@@ -13,8 +13,10 @@ export function nivelSemaforo(pctCumpl, pctCumplIdeal) {
   return "critico";
 }
 
+// `color` es para rellenos (barras); `colorTexto` es para texto/íconos y cambia
+// con el tema (en claro el ámbar y el verde claro no tendrían contraste).
 export const SEMAFORO = {
-  bien: { color: GOOD, icono: "▲", texto: "En ritmo o por encima del ideal" },
-  alerta: { color: WARNING, icono: "●", texto: "Entre 80% y 100% del ideal" },
-  critico: { color: CRITICAL, icono: "▼", texto: "Por debajo del 80% del ideal" },
+  bien: { color: GOOD, colorTexto: "var(--sem-bien-txt)", icono: "▲", texto: "En ritmo o por encima del ideal" },
+  alerta: { color: WARNING, colorTexto: "var(--sem-alerta-txt)", icono: "●", texto: "Entre 80% y 100% del ideal" },
+  critico: { color: CRITICAL, colorTexto: "var(--sem-critico-txt)", icono: "▼", texto: "Por debajo del 80% del ideal" },
 };

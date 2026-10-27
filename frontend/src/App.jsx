@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { useDashboardCache } from "./hooks/useDashboardCache";
+import { useTema } from "./hooks/useTema";
+import logoClaro from "./assets/logo-claro.png";
+import logoOscuro from "./assets/logo-oscuro.png";
 import MiResumenAsesor from "./components/MiResumenAsesor";
 import OtrosiAyuda from "./components/OtrosiAyuda";
 import VistaEquipo from "./components/admin/VistaEquipo";
@@ -58,6 +61,7 @@ function fmtActualizado(iso) {
 export default function App() {
   const [periodo, setPeriodo] = useState(periodoInicial());
   const [modo, setModo] = useState("personal");
+  const { tema, alternar: alternarTema } = useTema();
   const { loading, error, data, reintentar } = useDashboardCache(periodo, modo);
   // Lo que el backend realmente devolvió manda sobre lo solicitado (un admin
   // sin asesor vinculado pide "personal" y recibe "equipo").
@@ -76,6 +80,7 @@ export default function App() {
     <div className="min-h-screen">
       <header className="header-sticky sticky top-0 z-20 px-4 md:px-6 py-2.5 flex items-center justify-between gap-4 flex-wrap max-w-[1900px] mx-auto">
         <div className="flex items-center gap-3 flex-wrap">
+          <img src={tema === "claro" ? logoClaro : logoOscuro} alt="Xuma" className="h-[45px] w-[150px] object-contain" />
           <h1 className="text-lg font-extrabold tracking-wide text-white">COMO VAMOS · TELEVENTAS</h1>
           <p className="text-xs text-white/60">
             {mesNombre(periodo)} · Seguros Vanti — Zurich
@@ -136,6 +141,15 @@ export default function App() {
             </button>
           </div>
         )}
+        <button
+          type="button"
+          onClick={alternarTema}
+          className="glass rounded-full w-8 h-8 text-sm text-white/90 hover:text-white transition-colors"
+          aria-label={tema === "claro" ? "Cambiar a tema oscuro" : "Cambiar a tema claro"}
+          title={tema === "claro" ? "Tema oscuro" : "Tema claro"}
+        >
+          {tema === "claro" ? "☾" : "☀"}
+        </button>
       </header>
 
       <main className="px-4 md:px-6 py-4 max-w-[1900px] mx-auto">
@@ -163,7 +177,7 @@ export default function App() {
           />
         )}
 
-        {data?.vista === "equipo" && <VistaEquipo data={data} />}
+        {data?.vista === "equipo" && <VistaEquipo data={data} tema={tema} />}
       </main>
 
       {data?.otrosi && (
