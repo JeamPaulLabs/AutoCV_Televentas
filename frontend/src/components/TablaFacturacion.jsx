@@ -16,7 +16,7 @@ export default function TablaFacturacion({ compacto = false, filas, colEtiqueta,
               <th className="px-2 py-1 font-semibold">{etiqueta}</th>
               <th className="px-2 py-1 font-semibold text-right">{etiquetaCant}</th>
               <th className="px-2 py-1 font-semibold text-right">{compacto ? "Fact. SERVI" : "Facturación SERVI"}</th>
-              <th className="px-2 py-1 font-semibold text-right">% Part.</th>
+              <th className="px-2 py-1 font-semibold text-right" title="Participación sobre la cantidad de ventas">% Part.</th>
             </tr>
           </thead>
           <tbody>
@@ -25,7 +25,7 @@ export default function TablaFacturacion({ compacto = false, filas, colEtiqueta,
                 <td className="px-2.5 py-1">{f[colEtiqueta]}</td>
                 <td className="px-2 py-0.5 text-right tabular-nums">{fmtNumero(f[campoCantidad])}</td>
                 <td className="px-2 py-0.5 text-right tabular-nums">{fmtMoney(f.facturacion_servi)}</td>
-                <td className="px-2 py-0.5 text-right tabular-nums">{fmtPct(f.pct_participacion)}</td>
+                <td className="px-2 py-0.5 text-right tabular-nums">{fmtPct(totalCant ? f[campoCantidad] / totalCant : 0)}</td>
               </tr>
             ))}
           </tbody>

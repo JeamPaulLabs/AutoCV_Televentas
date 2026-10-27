@@ -25,7 +25,7 @@ VALUES
     ('2026-10-01', 'BREINER BARRERA RUDAS', 'BETA', 100, 500000, 140, 840000, NULL, NULL, 'Socializacion meta octubre 2026.pdf'),
     ('2026-10-01', 'ALAN JOSE HERNANDEZ LOAIZA', 'VACACIONES', 31, 155000, 140, 840000, NULL, NULL, 'Socializacion meta octubre 2026.pdf'),
     ('2026-10-01', 'LUISA L PERCY JARABA', 'VACACIONES', 60, 300000, 140, 840000, NULL, NULL, 'Socializacion meta octubre 2026.pdf'),
-    ('2026-10-01', 'JESUS CAMPO', 'NUEVO INGRESO', 10, 50000, NULL, NULL, NULL, NULL, 'Socializacion meta octubre 2026.pdf'),
+    ('2026-10-01', 'JESUS ADRIAN CAMPO ALVAREZ', 'NUEVO INGRESO', 10, 50000, NULL, NULL, NULL, NULL, 'Socializacion meta octubre 2026.pdf'),
     ('2026-10-01', 'BREINER STEVEN CATANO SALAZAR', 'RS', 50, 250000, 80, 480000, NULL, NULL, 'Socializacion meta octubre 2026.pdf'),
     ('2026-10-01', 'KONNY JORLANO ARGUMEDO PACHECO', 'RS', 50, 250000, 80, 480000, NULL, NULL, 'Socializacion meta octubre 2026.pdf')
 ON CONFLICT (periodo, asesor_norm) DO NOTHING;

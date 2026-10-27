@@ -113,6 +113,10 @@ body {
   --sem-bien-txt: #0ca30c;
   --sem-alerta-txt: #fab219;
   --sem-critico-txt: #e25555;
+  --prod-cp: #00b383;
+  --prod-bp: #5b8cff;
+  --prod-rs: #a876ff;
+  --prod-pcv: #e8a400;
 }
 html.tema-claro {
   --color-white: #0d1024;
@@ -121,6 +125,10 @@ html.tema-claro {
   --sem-bien-txt: #0a7a0a;
   --sem-alerta-txt: #8a5a00;
   --sem-critico-txt: #b02a2a;
+  --prod-cp: #007a57;
+  --prod-bp: #2858d8;
+  --prod-rs: #6d2fd6;
+  --prod-pcv: #a86a00;
   color-scheme: light;
 }
 html.tema-claro body {

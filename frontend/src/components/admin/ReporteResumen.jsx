@@ -13,7 +13,7 @@ import TablaDiaProductos, { NOMBRE_PRODUCTO, ORDEN_PRODUCTO, sumar } from "./Tab
 
 // Categóricos que se leen sobre fondo oscuro y claro; la identidad de cada
 // producto la lleva también la etiqueta, no solo el color.
-const COLOR_PRODUCTO = { CP: "#00b383", BP: "#5b8cff", RS: "#a876ff", PCV: "#e8a400" };
+const COLOR_PRODUCTO = { CP: "var(--prod-cp)", BP: "var(--prod-bp)", RS: "var(--prod-rs)", PCV: "var(--prod-pcv)" };
 const COLOR_ESTADO = { altas: "#00b383", digitadas: "#5b8cff", canceladas: "#8b90a8", otros: "#5c6180" };
 const NOMBRE_ESTADO = { altas: "Altas confirmadas", digitadas: "En proceso (digitadas)", canceladas: "Canceladas", otros: "Otros" };
 
@@ -71,10 +71,15 @@ function useMedida(ref) {
 }
 
 /** Ventas por día de TODO el mes (1..último día): los días que faltan por
- * llegar quedan vacíos, así la gráfica siempre muestra el mes completo. */
+ * llegar quedan vacíos, así la gráfica siempre muestra el mes completo.
+ * La leyenda filtra por producto (clic) y, al pasar por una barra, un recuadro
+ * muestra el detalle del día. Colores en variables CSS (ver index.css) para que
+ * contrasten en claro y oscuro. */
 function VentasPorDia({ porDia, productos, periodo, fechaCorte }) {
   const cont = useRef(null);
   const medida = useMedida(cont);
+  const [ocultos, setOcultos] = useState(() => new Set());
+  const [hover, setHover] = useState(null);
   const W = Math.max(medida.w, 280);
   const H = Math.max(medida.h, 110);
   const PL = 28, PB = 20, PT = 14;
@@ -82,7 +87,10 @@ function VentasPorDia({ porDia, productos, periodo, fechaCorte }) {
   const nDias = new Date(anio, mes, 0).getDate();
   const clave = (d) => `${anio}-${String(mes).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 
-  const max = Math.max(...[...porDia.values()].map((t) => t.total), 1);
+  const visibles = productos.filter(([p]) => !ocultos.has(p));
+  const totalVisible = (t) => (t ? visibles.reduce((s, [p]) => s + (t.porProducto[p] || 0), 0) : 0);
+
+  const max = Math.max(...[...porDia.values()].map(totalVisible), 1);
   const techo = Math.max(Math.ceil(max / 5) * 5, 5);
   const paso = (W - PL) / nDias;
   const ancho = Math.max(Math.min(paso * 0.7, 26), 3);
@@ -90,54 +98,128 @@ function VentasPorDia({ porDia, productos, periodo, fechaCorte }) {
   const cadaEtiqueta = paso >= 20 ? 1 : paso >= 11 ? 2 : 5;
   const conValor = paso >= 22;
 
+  function alternar(p) {
+    setOcultos((prev) => {
+      const n = new Set(prev);
+      if (n.has(p)) n.delete(p);
+      else if (n.size < productos.length - 1) n.add(p); // siempre queda al menos uno visible
+      return n;
+    });
+  }
+
+  const dia = hover;
+  const tHover = dia ? porDia.get(clave(dia)) : null;
+  const xHover = dia ? PL + (dia - 1) * paso + paso / 2 : 0;
+  const aLaIzquierda = xHover > W * 0.6;
+
   return (
     <div className="flex flex-col flex-1 min-h-0">
-    <div ref={cont} className="relative flex-1 min-h-[130px] overflow-hidden">
-      <svg width={W} height={H} style={{ maxWidth: "100%" }} className="text-white absolute inset-0" role="img" aria-label="Ventas por día del mes, apiladas por producto">
-        {[0, techo / 2, techo].map((v) => (
-          <g key={v}>
-            <line x1={PL} x2={W} y1={y(v)} y2={y(v)} stroke="currentColor" strokeOpacity="0.12" />
-            <text x={PL - 5} y={y(v) + 3} textAnchor="end" fontSize="10" fill="currentColor" fillOpacity="0.65">{Math.round(v)}</text>
-          </g>
-        ))}
-        {Array.from({ length: nDias }, (_, i) => {
-          const dia = i + 1;
-          const fecha = clave(dia);
-          const t = porDia.get(fecha);
-          const x = PL + i * paso + (paso - ancho) / 2;
-          const futuro = fecha > fechaCorte;
-          let base = 0;
-          return (
-            <g key={fecha}>
-              <title>{t ? `${fmtDia(fecha)}: ${t.total} ventas` : fmtDia(fecha)}</title>
-              {futuro && <rect x={PL + i * paso} y={PT} width={paso} height={H - PT - PB} fill="currentColor" fillOpacity="0.04" />}
-              {t &&
-                productos.map(([p]) => {
-                  const v = t.porProducto[p] || 0;
-                  if (!v) return null;
-                  const y1 = y(base + v);
-                  const alto = y(base) - y1;
-                  base += v;
-                  return <rect key={p} x={x} y={y1} width={ancho} height={alto} rx="1.5" fill={COLOR_PRODUCTO[p]} />;
-                })}
-              {t && conValor && (
-                <text x={x + ancho / 2} y={y(t.total) - 3} textAnchor="middle" fontSize="9" fill="currentColor" fillOpacity="0.8">{t.total}</text>
-              )}
-              {(dia === 1 || dia % cadaEtiqueta === 0 || dia === nDias) && (
-                <text x={x + ancho / 2} y={H - 6} textAnchor="middle" fontSize="10" fill="currentColor" fillOpacity={futuro ? 0.4 : 0.75}>{dia}</text>
-              )}
+      <div ref={cont} className="relative flex-1 min-h-[130px]" onMouseLeave={() => setHover(null)}>
+        <svg width={W} height={H} style={{ maxWidth: "100%" }} className="text-white absolute inset-0" role="img" aria-label="Ventas por día del mes, apiladas por producto">
+          {[0, techo / 2, techo].map((v) => (
+            <g key={v}>
+              <line x1={PL} x2={W} y1={y(v)} y2={y(v)} stroke="currentColor" strokeOpacity="0.14" />
+              <text x={PL - 5} y={y(v) + 3} textAnchor="end" fontSize="10" fill="currentColor" fillOpacity="0.7">{Math.round(v)}</text>
             </g>
+          ))}
+          {Array.from({ length: nDias }, (_, i) => {
+            const d = i + 1;
+            const fecha = clave(d);
+            const t = porDia.get(fecha);
+            const x = PL + i * paso + (paso - ancho) / 2;
+            const futuro = fecha > fechaCorte;
+            const tv = totalVisible(t);
+            let base = 0;
+            return (
+              <g key={fecha}>
+                {futuro && <rect x={PL + i * paso} y={PT} width={paso} height={H - PT - PB} fill="currentColor" fillOpacity="0.04" />}
+                {hover === d && <rect x={PL + i * paso} y={PT} width={paso} height={H - PT - PB} fill="currentColor" fillOpacity="0.1" rx="3" />}
+                {t &&
+                  visibles.map(([p]) => {
+                    const v = t.porProducto[p] || 0;
+                    if (!v) return null;
+                    const y1 = y(base + v);
+                    const alto = y(base) - y1;
+                    base += v;
+                    return <rect key={p} x={x} y={y1} width={ancho} height={alto} rx="1.5" style={{ fill: COLOR_PRODUCTO[p] }} />;
+                  })}
+                {tv > 0 && conValor && (
+                  <text x={x + ancho / 2} y={y(tv) - 3} textAnchor="middle" fontSize="9" fill="currentColor" fillOpacity="0.85">{tv}</text>
+                )}
+                {(d === 1 || d % cadaEtiqueta === 0 || d === nDias) && (
+                  <text x={x + ancho / 2} y={H - 6} textAnchor="middle" fontSize="10" fill="currentColor" fillOpacity={futuro ? 0.45 : 0.8}>{d}</text>
+                )}
+                {/* zona sensible a todo el alto de la columna */}
+                <rect
+                  x={PL + i * paso} y={PT} width={paso} height={H - PT - PB} fill="transparent"
+                  onMouseEnter={() => setHover(d)} onMouseMove={() => setHover(d)}
+                />
+              </g>
+            );
+          })}
+        </svg>
+
+        {dia && (
+          <div
+            className="pointer-events-none absolute z-20 modal-solid rounded-xl px-3 py-2 text-xs text-white shadow-lg min-w-[150px]"
+            style={{
+              top: 4,
+              left: xHover,
+              transform: `translateX(${aLaIzquierda ? "calc(-100% - 10px)" : "10px"})`,
+            }}
+            role="tooltip"
+          >
+            <div className="font-bold mb-1">{fmtDia(clave(dia))}</div>
+            {tHover ? (
+              <>
+                {productos.map(([p]) => (
+                  <div key={p} className={`flex items-center justify-between gap-4 ${ocultos.has(p) ? "opacity-40" : ""}`}>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-sm" style={{ background: COLOR_PRODUCTO[p] }} aria-hidden="true" />
+                      {NOMBRE_PRODUCTO[p]}
+                    </span>
+                    <span className="tabular-nums font-semibold">{tHover.porProducto[p] || 0}</span>
+                  </div>
+                ))}
+                <div className="flex justify-between gap-4 border-t border-white/20 mt-1 pt-1 font-bold">
+                  <span>{ocultos.size ? "Total (filtrado)" : "Total"}</span>
+                  <span className="tabular-nums">{totalVisible(tHover)}</span>
+                </div>
+                <div className="text-[10px] text-white/65 mt-0.5">
+                  Altas {tHover.altas} · Digitadas {tHover.digitadas} · Canceladas {tHover.canceladas}
+                </div>
+              </>
+            ) : (
+              <div className="text-white/70">{clave(dia) > fechaCorte ? "Día por venir" : "Sin ventas"}</div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-2 flex-wrap mt-1" role="group" aria-label="Filtrar por producto">
+        {productos.map(([p, n]) => {
+          const activo = !ocultos.has(p);
+          return (
+            <button
+              key={p}
+              type="button"
+              aria-pressed={activo}
+              onClick={() => alternar(p)}
+              title={`${activo ? "Ocultar" : "Mostrar"} ${NOMBRE_PRODUCTO[p]}`}
+              className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold border transition-opacity ${
+                activo ? "border-white/25 text-white" : "border-white/10 text-white/50 opacity-60 line-through"
+              }`}
+            >
+              <span className="w-2.5 h-2.5 rounded-sm" style={{ background: COLOR_PRODUCTO[p], opacity: activo ? 1 : 0.4 }} aria-hidden="true" />
+              {p} · {fmtNumero(n)}
+            </button>
           );
         })}
-      </svg>
-    </div>
-      <div className="flex gap-3 flex-wrap mt-0.5">
-        {productos.map(([p]) => (
-          <span key={p} className="flex items-center gap-1.5 text-[11px] text-white/80">
-            <span className="w-2.5 h-2.5 rounded-sm" style={{ background: COLOR_PRODUCTO[p] }} aria-hidden="true" />
-            {p}
-          </span>
-        ))}
+        {ocultos.size > 0 && (
+          <button type="button" onClick={() => setOcultos(new Set())} className="text-[11px] font-semibold text-xuma-green-light underline underline-offset-2">
+            Mostrar todos
+          </button>
+        )}
       </div>
     </div>
   );

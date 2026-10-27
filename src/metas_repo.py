@@ -21,6 +21,9 @@ def normalizar_nombre(nombre: str) -> str:
     return sin_tildes
 
 
+ALIAS_NOMBRE_META = {"JESUS CAMPO": "JESUS ADRIAN CAMPO ALVAREZ"}
+
+
 def leer_metas(periodo: dt.date) -> pd.DataFrame:
     """
     asesor_norm se recalcula en Python (sin tildes) en vez de usar la columna
@@ -38,6 +41,9 @@ def leer_metas(periodo: dt.date) -> pd.DataFrame:
     """
     with get_conexion() as conn:
         df = pd.read_sql(query, conn, params={"periodo": periodo})
+    # El acta de octubre trae al asesor como "JESUS CAMPO"; en Ilio es
+    # "JESUS ADRIAN CAMPO ALVAREZ". Se unifica aquí para que su meta concilie.
+    df["asesor"] = df["asesor"].replace(ALIAS_NOMBRE_META)
     df["asesor_norm"] = df["asesor"].map(normalizar_nombre)
     return df
 
