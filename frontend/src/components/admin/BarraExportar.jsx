@@ -84,7 +84,7 @@ export default function BarraExportar({ objetivoRef, nombreArchivo, textoWhatsAp
   }
 
   return (
-    <div className="flex items-center justify-end gap-2 flex-wrap mb-3">
+    <div className="flex items-center justify-end gap-2 flex-wrap">
       {aviso && (
         <span role="status" className="mr-auto text-xs text-white/80">
           {aviso}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import StatTile from "../StatTile";
 import TablaConteo from "../TablaConteo";
 import TablaFacturacion from "../TablaFacturacion";
@@ -54,25 +55,29 @@ function analizar(filas, calendario) {
   return { total, porDia, tot, productos, insights, diasLab };
 }
 
-/** Ancho real del contenedor, para dibujar el SVG en píxeles (sin escalarlo). */
-function useAncho(ref) {
-  const [ancho, setAncho] = useState(640);
+/** Ancho y alto reales del contenedor, para dibujar el SVG en pixeles. */
+function useMedida(ref) {
+  const [m, setM] = useState({ w: 640, h: 150 });
   useEffect(() => {
     const el = ref.current;
     if (!el) return undefined;
-    const ro = new ResizeObserver(([e]) => setAncho(Math.floor(e.contentRect.width)));
+    const ro = new ResizeObserver(([e]) =>
+      setM({ w: Math.floor(e.contentRect.width), h: Math.floor(e.contentRect.height) })
+    );
     ro.observe(el);
     return () => ro.disconnect();
   }, [ref]);
-  return ancho;
+  return m;
 }
 
 /** Ventas por día de TODO el mes (1..último día): los días que faltan por
  * llegar quedan vacíos, así la gráfica siempre muestra el mes completo. */
 function VentasPorDia({ porDia, productos, periodo, fechaCorte }) {
   const cont = useRef(null);
-  const W = Math.max(useAncho(cont), 280);
-  const H = 190, PL = 28, PB = 20, PT = 14;
+  const medida = useMedida(cont);
+  const W = Math.max(medida.w, 280);
+  const H = Math.max(medida.h, 110);
+  const PL = 28, PB = 20, PT = 14;
   const [anio, mes] = periodo.split("-").map(Number);
   const nDias = new Date(anio, mes, 0).getDate();
   const clave = (d) => `${anio}-${String(mes).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
@@ -86,8 +91,9 @@ function VentasPorDia({ porDia, productos, periodo, fechaCorte }) {
   const conValor = paso >= 22;
 
   return (
-    <div ref={cont} className="overflow-hidden">
-      <svg width={W} height={H} style={{ maxWidth: "100%" }} className="text-white block" role="img" aria-label="Ventas por día del mes, apiladas por producto">
+    <div className="flex flex-col flex-1 min-h-0">
+    <div ref={cont} className="relative flex-1 min-h-[130px] overflow-hidden">
+      <svg width={W} height={H} style={{ maxWidth: "100%" }} className="text-white absolute inset-0" role="img" aria-label="Ventas por día del mes, apiladas por producto">
         {[0, techo / 2, techo].map((v) => (
           <g key={v}>
             <line x1={PL} x2={W} y1={y(v)} y2={y(v)} stroke="currentColor" strokeOpacity="0.12" />
@@ -124,6 +130,7 @@ function VentasPorDia({ porDia, productos, periodo, fechaCorte }) {
           );
         })}
       </svg>
+    </div>
       <div className="flex gap-3 flex-wrap mt-0.5">
         {productos.map(([p]) => (
           <span key={p} className="flex items-center gap-1.5 text-[11px] text-white/80">
@@ -181,7 +188,7 @@ function BarraEstados({ tot }) {
 
 function Panel({ titulo, children, className = "" }) {
   return (
-    <div className={`glass rounded-2xl px-4 py-3 ${className}`}>
+    <div className={`glass rounded-2xl px-4 py-3 flex flex-col ${className}`}>
       <SeccionTitulo>{titulo}</SeccionTitulo>
       {children}
     </div>
@@ -197,15 +204,29 @@ export default function ReporteResumen({ data, tema, conFacturacion = true }) {
   const nombre = conFacturacion ? "Resumen" : "Vanti";
   const mes = mesNombreDe(data.periodo);
 
+  // La barra de acciones se pinta en la fila de las pestanas (ver Tabs.jsx).
+  const [slot, setSlot] = useState(null);
+  useEffect(() => setSlot(document.getElementById("acciones-tab")), []);
+
+  const barra = (
+    <BarraExportar
+      objetivoRef={objetivo}
+      tema={tema}
+      insights={a.insights}
+      nombreArchivo={`como-vamos-televentas_${nombre.toLowerCase()}_${data.fecha_corte}.png`}
+      textoWhatsApp={`COMO VAMOS · TELEVENTAS — ${nombre} · ${mes} · corte al ${data.fecha_corte}`}
+    />
+  );
+  const tabla = (filas, colEtiqueta, etiqueta) =>
+    conFacturacion ? (
+      <TablaFacturacion compacto filas={filas} colEtiqueta={colEtiqueta} etiqueta={etiqueta} campoCantidad="cantidad" />
+    ) : (
+      <TablaConteo compacto filas={filas} colEtiqueta={colEtiqueta} etiqueta={etiqueta} />
+    );
+
   return (
     <div>
-      <BarraExportar
-        objetivoRef={objetivo}
-        tema={tema}
-        insights={a.insights}
-        nombreArchivo={`como-vamos-televentas_${nombre.toLowerCase()}_${data.fecha_corte}.png`}
-        textoWhatsApp={`COMO VAMOS · TELEVENTAS — ${nombre} · ${mes} · corte al ${data.fecha_corte}`}
-      />
+      {slot ? createPortal(barra, slot) : barra}
 
       <div ref={objetivo} className="space-y-3">
         {/* Cabecera que solo aparece en la imagen exportada */}
@@ -217,8 +238,8 @@ export default function ReporteResumen({ data, tema, conFacturacion = true }) {
           </div>
         </div>
 
-        <div className="grid xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-3 items-stretch">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 content-start">
+        <div className="grid xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] gap-3 items-stretch">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 [&>*]:flex [&>*]:flex-col [&>*]:justify-center">
             <StatTile label="Total ventas" value={fmtNumero(a.total)} sub={`Corte al ${data.fecha_corte}`} destacado />
             {conFacturacion && <StatTile label="Facturación SERVI" value={fmtMoney(data.kpis.total_facturacion)} />}
             <StatTile label="Altas confirmadas" value={fmtNumero(a.tot.altas)} sub={`${fmtPct(a.total ? a.tot.altas / a.total : 0)} del total`} />
@@ -227,42 +248,37 @@ export default function ReporteResumen({ data, tema, conFacturacion = true }) {
           <PodioCard podio={data.podio} />
         </div>
 
-        <div className="grid xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-3 items-start">
-          <div>
-            <SeccionTitulo>Desempeño diario por producto</SeccionTitulo>
-            <TablaDiaProductos filas={data.dia_producto_estado} conFacturacion={conFacturacion} />
-          </div>
-          <div>
-            <SeccionTitulo>{conFacturacion ? "Facturación por gasera" : "Ventas por gasera"}</SeccionTitulo>
-            {conFacturacion ? (
-              <TablaFacturacion filas={data.tabla_gasera} colEtiqueta="entidad_facturacion" etiqueta="Gasera" campoCantidad="cantidad" />
-            ) : (
-              <TablaConteo filas={data.tabla_gasera} colEtiqueta="entidad_facturacion" etiqueta="Gasera" />
-            )}
-            <SeccionTitulo className="mt-3">{conFacturacion ? "Facturación por producto" : "Ventas por producto"}</SeccionTitulo>
-            {conFacturacion ? (
-              <TablaFacturacion filas={data.tabla_producto} colEtiqueta="producto" etiqueta="Producto" campoCantidad="cantidad" />
-            ) : (
-              <TablaConteo filas={data.tabla_producto} colEtiqueta="producto" etiqueta="Producto" />
-            )}
-          </div>
-        </div>
+        {/* Todo el reporte en una sola pantalla: la tabla completa a la izquierda
+            (sin scroll) y, a la derecha, grafica, gasera, producto, mezcla y estado. */}
+        <div className="grid xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] gap-3 items-stretch">
+          <TablaDiaProductos titulo="Desempeño diario por producto" filas={data.dia_producto_estado} conFacturacion={conFacturacion} />
 
-        {a.total > 0 && (
-          <div className="grid xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-3 items-stretch">
-            <Panel titulo="Ventas por día — mes completo">
-              <VentasPorDia porDia={a.porDia} productos={a.productos} periodo={data.periodo} fechaCorte={data.fecha_corte} />
-            </Panel>
-            <div className="grid sm:grid-cols-2 xl:grid-cols-1 gap-3">
-              <Panel titulo="Mezcla de productos">
-                <BarrasProducto productos={a.productos} total={a.total} />
+          <div className="flex flex-col gap-3 min-w-0">
+            {a.total > 0 && (
+              <Panel titulo="Ventas por día — mes completo" className="flex-1">
+                <VentasPorDia porDia={a.porDia} productos={a.productos} periodo={data.periodo} fechaCorte={data.fecha_corte} />
               </Panel>
-              <Panel titulo="Estado de las ventas">
-                <BarraEstados tot={a.tot} />
-              </Panel>
+            )}
+            <div className="grid sm:grid-cols-2 gap-3 items-start">
+              <div>
+                <SeccionTitulo>{conFacturacion ? "Facturación por gasera" : "Ventas por gasera"}</SeccionTitulo>
+                {tabla(data.tabla_gasera, "entidad_facturacion", "Gasera")}
+                <SeccionTitulo className="mt-3">{conFacturacion ? "Facturación por producto" : "Ventas por producto"}</SeccionTitulo>
+                {tabla(data.tabla_producto, "producto", "Producto")}
+              </div>
+              {a.total > 0 && (
+                <div className="space-y-3">
+                  <Panel titulo="Mezcla de productos">
+                    <BarrasProducto productos={a.productos} total={a.total} />
+                  </Panel>
+                  <Panel titulo="Estado de las ventas">
+                    <BarraEstados tot={a.tot} />
+                  </Panel>
+                </div>
+              )}
             </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

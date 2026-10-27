@@ -1,28 +1,23 @@
 import { toBlob } from "html-to-image";
 
-const ANCHO_CAPTURA = 1280;
+const ANCHO_MAX_PX = 2560;
 
 const siguienteCuadro = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
-/** Genera un PNG del nodo a un ancho fijo (el mismo diseño de PC aunque la
- * pantalla sea pequeña), con las tablas desplegadas completas y fondo sólido.
+/** Genera un PNG del nodo tal como se ve en pantalla (no se le cambia el ancho,
+ * asi el tablero no se mueve al descargar), con fondo solido y la cabecera con
+ * logo. La resolucion se ajusta para que la imagen mida ~2560 px de ancho.
  * Ver reglas `.capturando` en index.css. */
 export async function nodoAPng(nodo, { fondo }) {
-  const anchoPrevio = nodo.style.width;
   nodo.classList.add("capturando");
-  nodo.style.width = `${ANCHO_CAPTURA}px`;
   try {
-    // Dos cuadros para que el layout se acomode al ancho fijo y un respiro para
-    // que los gráficos que miden su contenedor (ResizeObserver) se redibujen.
     await siguienteCuadro();
-    await new Promise((r) => setTimeout(r, 200));
-    await siguienteCuadro();
-    const blob = await toBlob(nodo, { pixelRatio: 2, backgroundColor: fondo, cacheBust: true });
+    const pixelRatio = Math.min(3, Math.max(1, ANCHO_MAX_PX / nodo.offsetWidth));
+    const blob = await toBlob(nodo, { pixelRatio, backgroundColor: fondo, cacheBust: true });
     if (!blob) throw new Error("No se pudo generar la imagen");
     return blob;
   } finally {
     nodo.classList.remove("capturando");
-    nodo.style.width = anchoPrevio;
   }
 }
 

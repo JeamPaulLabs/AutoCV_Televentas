@@ -5,11 +5,8 @@ export default function Tabs({ tabs }) {
 
   return (
     <div>
-      <div
-        className="flex gap-1 border-b border-white/15 mb-3"
-        role="tablist"
-        aria-label="Secciones del dashboard"
-      >
+      <div className="flex items-end justify-between gap-3 flex-wrap border-b border-white/15 mb-3">
+      <div className="flex gap-1" role="tablist" aria-label="Secciones del dashboard">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -25,6 +22,9 @@ export default function Tabs({ tabs }) {
             {t.label}
           </button>
         ))}
+      </div>
+      {/* Las vistas pueden pintar aquí sus acciones (ver ReporteResumen) */}
+      <div id="acciones-tab" className="pb-1" />
       </div>
       {tabs.map((t) => (
         <div key={t.id} role="tabpanel" hidden={activa !== t.id}>
