@@ -64,3 +64,25 @@ def puede_ver_vista_equipo(current: dict) -> bool:
         return int(current.get("sub")) in USUARIOS_VISTA_ADMINISTRATIVA
     except (TypeError, ValueError):
         return False
+
+
+# Auditoría por asesor (pestaña "Auditoría"): dos miradas independientes.
+#  - comercial: coordinadora comercial (Martha, id_persona 30) -- y quien tenga
+#    alcance de supervisión de televentas / superadmin.
+#  - interna: auditor de calidad (Kevin, id_persona 28) -- y el superadmin.
+# Ambos pueden VER las auditorías de los dos tipos; solo guardan la propia.
+AUDITORES_COMERCIALES = {30}
+AUDITORES_INTERNOS = {28}
+
+
+def roles_auditoria(current: dict) -> set[str]:
+    roles: set[str] = set()
+    try:
+        sub = int(current.get("sub"))
+    except (TypeError, ValueError):
+        sub = None
+    if sub in AUDITORES_COMERCIALES or es_supervisor_televentas(current):
+        roles.add("comercial")
+    if sub in AUDITORES_INTERNOS or current.get("rol") == "superadmin":
+        roles.add("interna")
+    return roles

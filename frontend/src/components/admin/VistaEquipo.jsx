@@ -104,7 +104,7 @@ export default function VistaEquipo({ data, tema }) {
             ),
           },
           { id: "detalle", label: "Detalle por vendedor", content: <Detalle data={data} /> },
-          // Auditoría por asesor: solo supervisión de televentas (Martha).
+          // Auditoría por asesor: coordinación comercial (Martha) y auditoría interna (Kevin).
           ...(data.puede_auditar ? [{ id: "auditoria", label: "Auditoría", content: <VistaAuditoria data={data} /> }] : []),
         ]}
       />

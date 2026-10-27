@@ -162,3 +162,41 @@ export function sugerenciasAuditoria({
   }
   return out;
 }
+
+/** Sugerencias de la auditoría INTERNA (cancelaciones). `canceladas` es la
+ * revisión cargada del Excel; `eventualidades` el mapa contrato -> etiqueta. */
+export function sugerenciasInterna({ canceladas, totalCanceladasTablero, totalVentas, eventualidades = {} }) {
+  const out = [];
+  if (totalVentas > 0) {
+    const tasa = totalCanceladasTablero / totalVentas;
+    if (totalCanceladasTablero === 0) out.push({ tipo: "bien", texto: "No tiene ventas canceladas." });
+    else if (tasa <= 0.05) out.push({ tipo: "bien", texto: `Cancelaciones bajas: ${totalCanceladasTablero} de ${totalVentas} (${fmtPct(tasa)}).` });
+    else if (tasa >= 0.15) out.push({ tipo: "alerta", texto: `${totalCanceladasTablero} de ${totalVentas} ventas (${fmtPct(tasa)}) están canceladas.` });
+    else out.push({ tipo: "info", texto: `${totalCanceladasTablero} de ${totalVentas} ventas (${fmtPct(tasa)}) están canceladas.` });
+  }
+  if (canceladas.length === 0) return out;
+
+  const porCausal = new Map();
+  for (const c of canceladas) {
+    const k = c.causal_gestion || "Sin causal";
+    porCausal.set(k, (porCausal.get(k) || 0) + 1);
+  }
+  const [causal, n] = [...porCausal.entries()].sort((a, b) => b[1] - a[1])[0];
+  out.push({ tipo: "info", texto: `La causal más frecuente es “${causal}”: ${n} de ${canceladas.length} (${fmtPct(n / canceladas.length)}).` });
+
+  const sinGestion = canceladas.filter((c) => !c.estado_subsanacion && !c.resultado_re_auditoria && !c.gestion_supervisor_tmk).length;
+  if (sinGestion > 0) out.push({ tipo: "alerta", texto: `${sinGestion} cancelada${sinGestion === 1 ? "" : "s"} sin gestión de subsanación registrada.` });
+  else out.push({ tipo: "bien", texto: "Todas las canceladas tienen gestión registrada." });
+
+  const porDia = new Map();
+  for (const c of canceladas) if (c.fecha_venta) porDia.set(c.fecha_venta, (porDia.get(c.fecha_venta) || 0) + 1);
+  const pico = [...porDia.entries()].sort((a, b) => b[1] - a[1])[0];
+  if (pico && pico[1] >= 3) out.push({ tipo: "alerta", texto: `${pico[1]} canceladas son de ventas del ${fmtCorta(pico[0])}: ¿hubo alguna eventualidad ese día?` });
+
+  const faltantes = totalCanceladasTablero - canceladas.length;
+  if (faltantes > 0) out.push({ tipo: "info", texto: `${faltantes} cancelada${faltantes === 1 ? "" : "s"} del tablero no aparece${faltantes === 1 ? "" : "n"} en el reporte de revisión.` });
+
+  const audio = Object.values(eventualidades).filter((e) => e === "Falla de audio").length;
+  if (audio > 0) out.push({ tipo: "info", texto: `${audio} marcada${audio === 1 ? "" : "s"} como falla de audio: se reconocen según el otrosí.` });
+  return out;
+}

@@ -17,3 +17,12 @@ export function listarAuditorias(periodo, asesor) {
 export function guardarAuditoria(cuerpo) {
   return apiPost("/api/como-vamos/auditorias", cuerpo);
 }
+
+export function listarSeguimiento(periodo, asesor) {
+  const params = new URLSearchParams({ periodo, asesor });
+  return apiGet(`/api/como-vamos/auditorias/seguimiento?${params.toString()}`);
+}
+
+export function guardarSeguimiento(cuerpo) {
+  return apiPost("/api/como-vamos/auditorias/seguimiento", cuerpo);
+}

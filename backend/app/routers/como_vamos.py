@@ -46,7 +46,7 @@ from src.pivote import (
 from src.ruedas_seguro_repo import combinar_con_ilio, leer_rs
 from src.tarifas_repo import con_facturacion_servi, leer_tarifas, planes_sin_tarifa
 
-from ..auth_dep import es_supervisor_televentas, get_current_user, puede_ver_vista_equipo
+from ..auth_dep import es_supervisor_televentas, get_current_user, puede_ver_vista_equipo, roles_auditoria
 from ..utils import df_records
 
 router = APIRouter()
@@ -118,8 +118,8 @@ def dashboard(
     current: dict = Depends(get_current_user),
 ):
     auditando = bool(asesor and asesor.strip())
-    if auditando and not es_supervisor_televentas(current):
-        raise HTTPException(403, "Solo la supervisión de televentas puede ver a otro asesor.")
+    if auditando and not roles_auditoria(current):
+        raise HTTPException(403, "Solo quien audita (coordinación comercial o auditoría interna) puede ver a otro asesor.")
     periodo_d = _parse_periodo(periodo)
     fecha_corte_d = _parse_fecha(fecha_corte)
 
@@ -223,7 +223,8 @@ def dashboard(
             **base,
             "vista": "equipo",
             "puede_ver_equipo": autorizado_equipo,
-            "puede_auditar": es_supervisor_televentas(current),
+            "puede_auditar": bool(roles_auditoria(current)),
+            "roles_auditoria": sorted(roles_auditoria(current)),
             "kpis": kpis,
             "podio": df_records(top3[["asesor", "acumulado", "pct_cumpl_acumulado"]]),
             "resumen_equipo": {

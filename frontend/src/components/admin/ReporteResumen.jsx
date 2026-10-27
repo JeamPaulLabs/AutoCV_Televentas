@@ -225,7 +225,9 @@ function VentasPorDia({ porDia, productos, periodo, fechaCorte }) {
   );
 }
 
-function BarrasProducto({ productos, total }) {
+function BarrasProducto({ productos: sinOrden, total }) {
+  // De mayor a menor
+  const productos = [...sinOrden].sort((a, b) => b[1] - a[1]);
   const max = Math.max(...productos.map(([, n]) => n), 1);
   return (
     <ul className="space-y-2">
