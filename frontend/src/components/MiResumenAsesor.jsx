@@ -511,7 +511,7 @@ export default function MiResumenAsesor({ resumen, detalleDiaDia, billetera, can
               sub={nCanceladas > 0 ? `${fmtNumero(resumen.acumulado - nCanceladas)} vigentes · ${fmtNumero(nCanceladas)} canceladas` : undefined}
               destacado
             />
-            <StatTile label="Forecast de cierre" value={fmtNumero(resumen.forecast)} sub={fmtPct(resumen.pct_forecast) + " de la meta"} />
+            <StatTile label="Forecast de cierre" value={fmtNumero(resumen.forecast)} sub={fmtPct(resumen.pct_forecast) + (otrosi ? " de la meta ajustada" : " de la meta")} />
             {billetera?.total > 0 && (
               <StatTile
                 label="Billetera Protegida"
@@ -531,7 +531,7 @@ export default function MiResumenAsesor({ resumen, detalleDiaDia, billetera, can
           <div className="glass rounded-2xl px-5 py-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs uppercase tracking-wide text-white/60 font-semibold">
-                Cumplimiento acumulado
+                Cumplimiento acumulado{otrosi ? " · sobre tu meta ajustada" : ""}
               </span>
               <span className="text-sm font-bold text-white tabular-nums">
                 {fmtPct(resumen.pct_cumpl_acumulado)}
@@ -543,7 +543,7 @@ export default function MiResumenAsesor({ resumen, detalleDiaDia, billetera, can
             <div className="mt-2 text-[11px] text-white/50">
               {sinMeta
                 ? "Todavía no tienes una meta asignada este mes."
-                : `Ideal a la fecha: ${fmtPct(resumen.pct_cump_ideal)} · faltan ${fmtNumero(Math.max(resumen.faltan_para_meta, 0))} para la meta`}
+                : `Ideal a la fecha: ${fmtPct(resumen.pct_cump_ideal)} · faltan ${fmtNumero(Math.max(resumen.faltan_para_meta, 0))} para la meta${otrosi ? " ajustada" : ""}`}
             </div>
           </div>
         </div>

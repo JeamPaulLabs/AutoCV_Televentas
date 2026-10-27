@@ -28,7 +28,7 @@ from src.ilio_repo import (
     periodo_esta_cerrado,
     ultima_actualizacion_ilio,
 )
-from src.comisiones import estado_otrosi
+from src.comisiones import estado_otrosi, factor_meta
 from src.metas_repo import asesores_sin_meta, leer_metas
 from src.pivote import (
     kpis_facturacion,
@@ -133,8 +133,15 @@ def dashboard(
     faltantes = asesores_sin_meta(df_ventas, df_metas, excluidos)
     sin_tarifa = planes_sin_tarifa(df_ventas)
 
+    # df_ventas ya trae Rueda Seguro (cuenta en el acumulado), así que se le
+    # quitan esas filas para no contarlas dos veces: el otrosí las recibe
+    # aparte, como siempre (ver comisiones.estado_otrosi).
+    df_rs_ilio = leer_rueda_segura(periodo_d, fecha_corte_d)
+    otrosi = estado_otrosi(periodo_d, df_ventas[~es_rueda_seguro(df_ventas)], df_rs_ilio)
+
     cal = Calendario(periodo_d, fecha_corte_d)
-    df_proyeccion = calcular_proyeccion(df_ventas, df_metas, cal, excluidos)
+    # Con otrosí vigente el cumplimiento se mide contra la meta ajustada.
+    df_proyeccion = calcular_proyeccion(df_ventas, df_metas, cal, excluidos, factor_meta=factor_meta(otrosi))
 
     df_por_dia = resumen_por_dia(df_ventas).assign(
         fecha_venta=lambda d: d["fecha_venta"].astype(str)
@@ -151,7 +158,6 @@ def dashboard(
         .head(3)
     )
 
-    df_rs_ilio = leer_rueda_segura(periodo_d, fecha_corte_d)
     try:
         df_rs = combinar_con_ilio(leer_rs(), df_rs_ilio, periodo=periodo_d)
     except FileNotFoundError:
@@ -186,10 +192,7 @@ def dashboard(
         "fecha_corte": cal.fecha_corte.isoformat(),
         "cerrado": cerrado,
         "actualizado_en": actualizado_en,
-        # df_ventas ya trae Rueda Seguro (cuenta en el acumulado), así que se le
-        # quitan esas filas para no contarlas dos veces: el otrosí las recibe
-        # aparte, como siempre (ver comisiones.estado_otrosi).
-        "otrosi": estado_otrosi(periodo_d, df_ventas[~es_rueda_seguro(df_ventas)], df_rs_ilio),
+        "otrosi": otrosi,
         "calendario": {
             "dias_colectivo": cal.dias_colectivo,
             "dias_laborados": cal.dias_laborados,
@@ -229,6 +232,7 @@ def dashboard(
             "podio": df_records(top3[["asesor", "acumulado", "pct_cumpl_acumulado"]]),
             "resumen_equipo": {
                 "meta_total": float(df_proyeccion["meta_mes"].sum()),
+                "meta_ajustada_total": float(df_proyeccion["meta_ajustada"].sum()),
                 "acumulado_total": float(df_proyeccion["acumulado"].sum()),
                 "forecast_total": float(df_proyeccion["forecast"].sum()),
             },
@@ -297,10 +301,11 @@ def dashboard(
                 "asesor": mi_meta_row["asesor"],
                 "categoria": mi_meta_row["categoria"],
                 "meta_mes": int(mi_meta_row["meta_escala_1"]),
+                "meta_ajustada": float(mi_meta_row["meta_escala_1"]) * factor_meta(otrosi),
                 "acumulado": 0,
                 "pct_cumpl_acumulado": 0.0,
                 "meta_diaria": 0.0,
-                "faltan_para_meta": int(mi_meta_row["meta_escala_1"]),
+                "faltan_para_meta": float(mi_meta_row["meta_escala_1"]) * factor_meta(otrosi),
                 "venta_necesaria_dia": 0.0,
                 "meta_ideal_a_la_fecha": 0.0,
                 "pct_cump_ideal": 0.0,

@@ -90,3 +90,12 @@ def estado_otrosi(periodo: dt.date, *dfs_ventas: pd.DataFrame) -> dict | None:
         "condicion_equipo": meta is not None,
         "condicion_equipo_cumplida": meta is None or altas >= meta,
     }
+
+
+def factor_meta(otrosi: dict | None) -> float:
+    """Fracción de la meta individual desde la que se habilita la comisión: el
+    % mínimo del otrosí cuando su condición (si la tiene) está cumplida; 1.0
+    (meta completa) si no hay otrosí o no se cumplió la condición del equipo."""
+    if otrosi and otrosi.get("condicion_equipo_cumplida"):
+        return float(otrosi["pct_minimo_comision"])
+    return 1.0

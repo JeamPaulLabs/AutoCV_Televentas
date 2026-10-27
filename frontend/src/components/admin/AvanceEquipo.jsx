@@ -32,9 +32,11 @@ export default function AvanceEquipo({ data }) {
   // siempre y el otrosí solo baja la meta individual.
   const condEquipo = Boolean(otrosi) && otrosi.condicion_equipo !== false;
 
-  const meta = condEquipo ? otrosi.meta_equipo_altas_positivas : meta_total;
+  // Sin condición de equipo, el otrosí solo baja la meta: se mide contra la meta ajustada.
+  const metaAjustadaTotal = data.resumen_equipo.meta_ajustada_total ?? meta_total;
+  const meta = condEquipo ? otrosi.meta_equipo_altas_positivas : metaAjustadaTotal;
   const acumulado = condEquipo ? otrosi.altas_positivas : acumulado_total;
-  const pct = condEquipo ? otrosi.pct_avance : meta_total ? acumulado_total / meta_total : 0;
+  const pct = condEquipo ? otrosi.pct_avance : meta ? acumulado_total / meta : 0;
   // Con otrosí no hay forecast individual de altas positivas: se proyecta al
   // ritmo actual (lineal sobre los días laborados), y así se rotula.
   const proyeccion = condEquipo

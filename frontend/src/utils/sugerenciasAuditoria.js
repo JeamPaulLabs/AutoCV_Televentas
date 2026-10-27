@@ -55,7 +55,9 @@ export function sugerenciasAuditoria({
     out.push({ tipo: "alerta", texto: "Este asesor no tiene meta cargada: sin ella no hay semáforo ni proyección." });
     return out;
   }
-  const { meta_mes: meta, acumulado } = resumen;
+  // Con otrosí el backend ya mide contra la meta ajustada (meta_ajustada).
+  const { acumulado } = resumen;
+  const meta = resumen.meta_ajustada ?? resumen.meta_mes;
   const pct = acumulado / meta;
   const ideal = resumen.pct_cump_ideal ?? 0;
   const diasCal = calendario.dias_laborados;
@@ -64,7 +66,7 @@ export function sugerenciasAuditoria({
 
   // Avance frente a la meta y al ideal
   if (pct >= ideal) {
-    out.push({ tipo: "bien", texto: `Va al ${fmtPct(pct)} de su meta, por encima del ideal a la fecha (${fmtPct(ideal)}).` });
+    out.push({ tipo: "bien", texto: `Va al ${fmtPct(pct)} de su meta${otrosi ? " ajustada" : ""}, por encima del ideal a la fecha (${fmtPct(ideal)}).` });
   } else {
     const falta = Math.max(meta - acumulado, 0);
     const porDia = porLaborar > 0 ? falta / porLaborar : falta;
@@ -76,7 +78,7 @@ export function sugerenciasAuditoria({
 
   // Otrosí
   if (otrosi) {
-    const metaAj = meta * otrosi.pct_minimo_comision;
+    const metaAj = resumen.meta_mes * otrosi.pct_minimo_comision;
     if (acumulado >= metaAj) {
       out.push({ tipo: "bien", texto: `Ya superó el ${fmtPct(otrosi.pct_minimo_comision)} de su meta (${fmtNumero(metaAj)}): la comisión queda habilitada por el otrosí.` });
     } else {

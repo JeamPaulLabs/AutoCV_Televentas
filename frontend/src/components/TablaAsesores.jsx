@@ -25,7 +25,7 @@ export default function TablaAsesores({ filas, otrosi, detalle = [] }) {
             )}
             <th className="px-2.5 py-1.5 font-semibold text-right" title="Todos los estados, incluidas canceladas">Acumulado</th>
             <th className="px-2.5 py-1.5 font-semibold text-right" title="Acumulado sin las canceladas">Vigentes</th>
-            <th className="px-2.5 py-1.5 font-semibold">% Cumpl.</th>
+            <th className="px-2.5 py-1.5 font-semibold" title={otrosi ? "Sobre la meta ajustada por el otrosí" : undefined}>% Cumpl.{otrosi ? " (ajustada)" : ""}</th>
             <th className="px-2.5 py-1.5 font-semibold text-right">% Cumpl. ideal</th>
             <th className="px-2.5 py-1.5 font-semibold text-right">Venta/día</th>
             <th className="px-2.5 py-1.5 font-semibold text-right">Forecast</th>
