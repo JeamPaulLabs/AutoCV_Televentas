@@ -33,7 +33,7 @@ RUN pip install --no-cache-dir -r backend/requirements.txt
 
 COPY backend/app ./backend/app
 COPY src ./src
-COPY config/__init__.py config/settings.py config/asesores_excluidos.yml config/Secuencia.yml ./config/
+COPY config/__init__.py config/settings.py config/asesores_excluidos.yml config/esquema_comisiones.yml config/Secuencia.yml ./config/
 COPY --from=frontend /build/dist ./backend/static
 
 EXPOSE 8001
