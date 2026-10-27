@@ -1,11 +1,10 @@
 import Tabs from "../Tabs";
-import StatTile from "../StatTile";
 import TablaAsesores from "../TablaAsesores";
 import TablaConteo from "../TablaConteo";
 import TablaDetalleAsesor from "../TablaDetalleAsesor";
 import TablaFacturacion from "../TablaFacturacion";
-import { fmtNumero } from "../../utils/formato";
-import HeroEquipo from "./HeroEquipo";
+import AvanceEquipo from "./AvanceEquipo";
+import ResumenVisual from "./ResumenVisual";
 import SeccionTitulo from "./SeccionTitulo";
 import TablaDiaProductos from "./TablaDiaProductos";
 
@@ -34,7 +33,7 @@ function Avisos({ avisos }) {
 function Resumen({ data }) {
   return (
     <div className="space-y-4">
-      <HeroEquipo data={data} />
+      <ResumenVisual data={data} />
       <div className="grid xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-3 items-start">
         <div>
           <SeccionTitulo>Desempeño diario por producto</SeccionTitulo>
@@ -56,7 +55,7 @@ function Resumen({ data }) {
 function Vanti({ data }) {
   return (
     <div className="space-y-4">
-      <HeroEquipo data={data} conFacturacion={false} />
+      <ResumenVisual data={data} conFacturacion={false} />
       <div className="grid xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-3 items-start">
         <div>
           <SeccionTitulo>Desempeño diario por producto</SeccionTitulo>
@@ -74,29 +73,20 @@ function Vanti({ data }) {
 }
 
 function Detalle({ data }) {
-  const r = data.resumen_equipo;
   return (
-    <div className="grid lg:grid-cols-[minmax(0,1fr)_2fr] gap-3">
-      <div>
-        <SeccionTitulo>Resumen del equipo</SeccionTitulo>
-        <div className="grid grid-cols-2 gap-2 mb-3">
-          <StatTile label="Meta del mes" value={fmtNumero(r.meta_total)} />
-          <StatTile label="Acumulado a la fecha" value={fmtNumero(r.acumulado_total)} />
-          <StatTile label="Forecast de cierre" value={fmtNumero(r.forecast_total)} />
-          <StatTile
-            label="Días laborados"
-            value={`${data.calendario.dias_laborados} / ${data.calendario.dias_colectivo}`}
-            sub={`${data.calendario.dias_por_laborar} días por laborar`}
-          />
+    <>
+      <AvanceEquipo data={data} />
+      <div className="grid lg:grid-cols-[minmax(0,1fr)_2fr] gap-3">
+        <div>
+          <SeccionTitulo>Ventas por estado</SeccionTitulo>
+          <TablaFacturacion filas={data.tabla_estados} colEtiqueta="nombre_estado" etiqueta="Estado" campoCantidad="cantidad" />
         </div>
-        <SeccionTitulo>Ventas por estado</SeccionTitulo>
-        <TablaFacturacion filas={data.tabla_estados} colEtiqueta="nombre_estado" etiqueta="Estado" campoCantidad="cantidad" />
+        <div>
+          <SeccionTitulo>Detalle por vendedor — pólizas por estado</SeccionTitulo>
+          <TablaDetalleAsesor filas={data.detalle_asesor_estado} />
+        </div>
       </div>
-      <div>
-        <SeccionTitulo>Detalle por vendedor — pólizas por estado</SeccionTitulo>
-        <TablaDetalleAsesor filas={data.detalle_asesor_estado} />
-      </div>
-    </div>
+    </>
   );
 }
 
@@ -115,6 +105,7 @@ export default function VistaEquipo({ data }) {
             label: "Como vamos por asesor",
             content: (
               <>
+                <AvanceEquipo data={data} />
                 <SeccionTitulo>Como vamos por asesor</SeccionTitulo>
                 <TablaAsesores filas={data.asesores} />
               </>

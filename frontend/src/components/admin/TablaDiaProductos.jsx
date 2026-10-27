@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { fmtDia, fmtMoney, fmtNumero } from "../../utils/formato";
 
-const ORDEN_PRODUCTO = ["CP", "BP", "RS", "PCV"];
-const NOMBRE_PRODUCTO = {
+export const ORDEN_PRODUCTO = ["CP", "BP", "RS", "PCV"];
+export const NOMBRE_PRODUCTO = {
   CP: "Cuota Protegida",
   BP: "Billetera Protegida",
   RS: "Rueda Seguro",
@@ -10,7 +10,7 @@ const NOMBRE_PRODUCTO = {
 };
 const ESTADOS_ALTA = ["AUDITADA WEB", "ALTA TRANSACCIONAL"];
 
-function claseEstado(estado) {
+export function claseEstado(estado) {
   if (ESTADOS_ALTA.includes(estado)) return "altas";
   if (estado === "DIGITADA WEB") return "digitadas";
   if (estado === "CANCELADA") return "canceladas";
@@ -18,7 +18,7 @@ function claseEstado(estado) {
 }
 
 /** Suma un conjunto de filas (fecha x asesor x producto x estado) en una sola fila de totales. */
-function sumar(filas) {
+export function sumar(filas) {
   const t = { porProducto: {}, altas: 0, digitadas: 0, canceladas: 0, otros: 0, total: 0, fact: 0 };
   for (const f of filas) {
     t.porProducto[f.producto] = (t.porProducto[f.producto] || 0) + f.cantidad;
