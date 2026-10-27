@@ -43,6 +43,11 @@ export default function AvanceEquipo({ data }) {
   const ideal = idealEquipo(data.asesores);
   const nivel = SEMAFORO[nivelSemaforo(pct, ideal)];
 
+  // Ajuste de meta: con la condición del equipo cumplida, la comisión se habilita
+  // desde pct_minimo_comision de la meta individual (en vez del 100%).
+  const metaAjustada = otrosi ? meta_total * otrosi.pct_minimo_comision : meta_total;
+  const pctSobreAjustada = metaAjustada ? acumulado_total / metaAjustada : 0;
+
   const faltan = otrosi ? Math.max(otrosi.meta_equipo_altas_positivas - otrosi.altas_positivas, 0) : 0;
   const porDia = cal.dias_por_laborar > 0 ? Math.ceil(faltan / cal.dias_por_laborar) : faltan;
 
@@ -82,6 +87,22 @@ export default function AvanceEquipo({ data }) {
             : `Faltan ${fmtNumero(faltan)} altas positivas para habilitar la comisión del equipo` +
               (cal.dias_por_laborar > 0 ? ` (≈ ${fmtNumero(porDia)} por día en los ${cal.dias_por_laborar} días que quedan).` : ".")}
         </p>
+      )}
+
+      {otrosi && (
+        <div className="mt-3 rounded-xl border border-white/15 bg-white/5 px-4 py-3 grid md:grid-cols-3 gap-4">
+          <Dato label="Meta del equipo (100%)" value={fmtNumero(meta_total)} sub="suma de metas individuales" />
+          <Dato
+            label={`Meta ajustada por otrosí (${fmtPct(otrosi.pct_minimo_comision)})`}
+            value={fmtNumero(metaAjustada)}
+            sub={otrosi.condicion_equipo_cumplida ? "ajuste vigente: condición del equipo cumplida" : `se habilita al llegar a ${fmtNumero(otrosi.meta_equipo_altas_positivas)} altas positivas`}
+          />
+          <Dato
+            label="Llevamos sobre la meta ajustada"
+            value={fmtPct(pctSobreAjustada)}
+            sub={`${fmtNumero(acumulado_total)} de ${fmtNumero(metaAjustada)} (todos los estados)`}
+          />
+        </div>
       )}
 
       <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">

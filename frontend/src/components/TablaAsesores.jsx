@@ -2,17 +2,25 @@ import { fmtMoney, fmtNumero, fmtPct } from "../utils/formato";
 import { SEMAFORO, nivelSemaforo } from "../utils/semaforo";
 
 
-export default function TablaAsesores({ filas }) {
+export default function TablaAsesores({ filas, otrosi }) {
   const ordenadas = [...filas].sort((a, b) => b.pct_cumpl_acumulado - a.pct_cumpl_acumulado);
 
   return (
     <div className="glass rounded-xl overflow-auto text-xs max-h-[calc(100vh-300px)]">
-      <table className="w-full border-collapse min-w-[900px]">
+      <table className="w-full border-collapse min-w-[980px]">
         <thead>
           <tr className="tabla-header text-white text-left sticky top-0 z-10">
             <th className="px-2.5 py-1.5 font-semibold">Asesor</th>
             <th className="px-2.5 py-1.5 font-semibold">Categoría</th>
             <th className="px-2.5 py-1.5 font-semibold text-right">Meta</th>
+            {otrosi && (
+              <th
+                className="px-2.5 py-1.5 font-semibold text-right"
+                title={`Meta para habilitar comisión con el otrosí (${fmtPct(otrosi.pct_minimo_comision)} de la meta)`}
+              >
+                Meta ajustada
+              </th>
+            )}
             <th className="px-2.5 py-1.5 font-semibold text-right">Acumulado</th>
             <th className="px-2.5 py-1.5 font-semibold">% Cumpl.</th>
             <th className="px-2.5 py-1.5 font-semibold text-right">% Cumpl. ideal</th>
@@ -39,6 +47,14 @@ export default function TablaAsesores({ filas }) {
                 </td>
                 <td className="px-2.5 py-1">{fila.categoria}</td>
                 <td className="px-2.5 py-1 text-right tabular-nums">{fmtNumero(fila.meta_mes)}</td>
+                {otrosi && (
+                  <td className="px-2.5 py-1 text-right tabular-nums">
+                    {fmtNumero(fila.meta_mes * otrosi.pct_minimo_comision)}
+                    {fila.meta_mes > 0 && fila.acumulado >= fila.meta_mes * otrosi.pct_minimo_comision && (
+                      <span className="ml-1 text-xuma-green-dark" title="Ya alcanzó la meta ajustada" aria-label="alcanzada">✓</span>
+                    )}
+                  </td>
+                )}
                 <td className="px-2.5 py-1 text-right tabular-nums">{fmtNumero(fila.acumulado)}</td>
                 <td className="px-2.5 py-1">
                   <div className="flex items-center gap-1.5 min-w-[110px]">
