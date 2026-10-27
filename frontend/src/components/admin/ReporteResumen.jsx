@@ -238,8 +238,8 @@ export default function ReporteResumen({ data, tema, conFacturacion = true }) {
           </div>
         </div>
 
-        <div className="grid xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] gap-3 items-stretch">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 [&>*]:flex [&>*]:flex-col [&>*]:justify-center">
+        <div className="grid xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-3 items-stretch">
+          <div className="grid grid-cols-2 gap-2 [&>*]:flex [&>*]:flex-col [&>*]:justify-center">
             <StatTile label="Total ventas" value={fmtNumero(a.total)} sub={`Corte al ${data.fecha_corte}`} destacado />
             {conFacturacion && <StatTile label="Facturación SERVI" value={fmtMoney(data.kpis.total_facturacion)} />}
             <StatTile label="Altas confirmadas" value={fmtNumero(a.tot.altas)} sub={`${fmtPct(a.total ? a.tot.altas / a.total : 0)} del total`} />
@@ -250,7 +250,7 @@ export default function ReporteResumen({ data, tema, conFacturacion = true }) {
 
         {/* Todo el reporte en una sola pantalla: la tabla completa a la izquierda
             (sin scroll) y, a la derecha, grafica, gasera, producto, mezcla y estado. */}
-        <div className="grid xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] gap-3 items-stretch">
+        <div className="grid xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-3 items-stretch">
           <TablaDiaProductos titulo="Desempeño diario por producto" filas={data.dia_producto_estado} conFacturacion={conFacturacion} />
 
           <div className="flex flex-col gap-3 min-w-0">

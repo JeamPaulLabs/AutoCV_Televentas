@@ -24,7 +24,7 @@ export default function Tabs({ tabs }) {
         ))}
       </div>
       {/* Las vistas pueden pintar aquí sus acciones (ver ReporteResumen) */}
-      <div id="acciones-tab" className="pb-1" />
+      <div id="acciones-tab" className="pb-1 flex items-center gap-2 flex-wrap justify-end" />
       </div>
       {tabs.map((t) => (
         <div key={t.id} role="tabpanel" hidden={activa !== t.id}>
