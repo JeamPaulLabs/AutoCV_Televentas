@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { fmtDia, fmtMoney, fmtNumero } from "../../utils/formato";
 
 const ORDEN_PRODUCTO = ["CP", "BP", "RS", "PCV"];
@@ -17,7 +17,7 @@ function claseEstado(estado) {
   return "otros";
 }
 
-/** Suma un conjunto de filas (fecha x asesor x producto x estado) en una sola celda de totales. */
+/** Suma un conjunto de filas (fecha x asesor x producto x estado) en una sola fila de totales. */
 function sumar(filas) {
   const t = { porProducto: {}, altas: 0, digitadas: 0, canceladas: 0, otros: 0, total: 0, fact: 0 };
   for (const f of filas) {
@@ -41,7 +41,7 @@ function agrupar(filas, clave) {
 
 const num = (n) => (n ? fmtNumero(n) : <span className="text-white/30">·</span>);
 
-function Celdas({ t, productos, hayOtros, acum }) {
+function Celdas({ t, productos, hayOtros, acum, conFacturacion }) {
   return (
     <>
       {productos.map((p) => (
@@ -53,30 +53,27 @@ function Celdas({ t, productos, hayOtros, acum }) {
       {hayOtros && <td className="px-2.5 py-1.5 text-right tabular-nums">{num(t.otros)}</td>}
       <td className="px-2.5 py-1.5 text-right tabular-nums font-bold border-l border-white/10">{fmtNumero(t.total)}</td>
       <td className="px-2.5 py-1.5 text-right tabular-nums text-white/70">{acum == null ? "" : fmtNumero(acum)}</td>
-      <td className="px-2.5 py-1.5 text-right tabular-nums">{t.fact ? fmtMoney(t.fact) : <span className="text-white/30">·</span>}</td>
+      {conFacturacion && (
+        <td className="px-2.5 py-1.5 text-right tabular-nums">{t.fact ? fmtMoney(t.fact) : <span className="text-white/30">·</span>}</td>
+      )}
     </>
   );
 }
 
 /** Día a día de los productos (CP, BP, RS, PCV): una fila por día con
- * conteos por producto y por estado; clic en un día para ver el detalle por asesor. */
-export default function TablaDiaProductos({ filas }) {
+ * conteos por producto y por estado. Sin desglose por asesor (eso va en "Como
+ * vamos por asesor"); con conFacturacion=false es la versión Vanti. */
+export default function TablaDiaProductos({ filas, conFacturacion = true }) {
   const [producto, setProducto] = useState("TODOS");
-  const [asesor, setAsesor] = useState("TODOS");
-  const [abierto, setAbierto] = useState(null);
 
   const presentes = useMemo(() => {
     const set = new Set(filas.map((f) => f.producto));
     return ORDEN_PRODUCTO.filter((p) => set.has(p) || p !== "PCV");
   }, [filas]);
-  const asesores = useMemo(() => [...new Set(filas.map((f) => f.asesor))].sort(), [filas]);
 
   const filtradas = useMemo(
-    () =>
-      filas.filter(
-        (f) => (producto === "TODOS" || f.producto === producto) && (asesor === "TODOS" || f.asesor === asesor)
-      ),
-    [filas, producto, asesor]
+    () => filas.filter((f) => producto === "TODOS" || f.producto === producto),
+    [filas, producto]
   );
 
   const productosCol = producto === "TODOS" ? presentes : [producto];
@@ -86,10 +83,9 @@ export default function TablaDiaProductos({ filas }) {
     return [...porDia.keys()]
       .sort()
       .map((fecha) => {
-        const items = porDia.get(fecha);
-        const t = sumar(items);
+        const t = sumar(porDia.get(fecha));
         acum += t.total;
-        return { fecha, items, t, acum };
+        return { fecha, t, acum };
       })
       .reverse();
   }, [filtradas]);
@@ -102,9 +98,6 @@ export default function TablaDiaProductos({ filas }) {
       activo ? "bg-xuma-green-dark text-xuma-bg-dark" : "glass text-white/75 hover:text-white"
     }`;
 
-  function alternar(fecha) {
-    setAbierto(abierto === fecha ? null : fecha);
-  }
 
   return (
     <div>
@@ -117,19 +110,6 @@ export default function TablaDiaProductos({ filas }) {
             {p} · {fmtNumero(totalPorProducto[p] || 0)}
           </button>
         ))}
-        <label className="ml-auto flex items-center gap-2 text-xs text-white/75">
-          Asesor
-          <select
-            value={asesor}
-            onChange={(e) => setAsesor(e.target.value)}
-            className="glass rounded-lg px-2 py-1 text-xs text-white bg-xuma-surface-2"
-          >
-            <option value="TODOS">Todos</option>
-            {asesores.map((a) => (
-              <option key={a} value={a}>{a}</option>
-            ))}
-          </select>
-        </label>
       </div>
 
       {dias.length === 0 ? (
@@ -149,51 +129,21 @@ export default function TablaDiaProductos({ filas }) {
                 {hayOtros && <th className="px-2.5 py-1.5 font-semibold text-right">Otros</th>}
                 <th className="px-2.5 py-1.5 font-semibold text-right border-l border-white/10">Total</th>
                 <th className="px-2.5 py-1.5 font-semibold text-right">Acumulado</th>
-                <th className="px-2.5 py-1.5 font-semibold text-right">Facturación SERVI</th>
+                {conFacturacion && <th className="px-2.5 py-1.5 font-semibold text-right">Facturación SERVI</th>}
               </tr>
             </thead>
             <tbody>
-              {dias.map(({ fecha, items, t, acum }) => {
-                const open = abierto === fecha;
-                return (
-                  <Fragment key={fecha}>
-                    <tr
-                      onClick={() => alternar(fecha)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          alternar(fecha);
-                        }
-                      }}
-                      tabIndex={0}
-                      aria-expanded={open}
-                      title="Clic para ver el detalle por asesor"
-                      className={`border-t border-white/10 cursor-pointer text-white/90 hover:bg-white/5 ${open ? "bg-white/10" : ""}`}
-                    >
-                      <td className="px-2.5 py-1.5 whitespace-nowrap">
-                        <span className="text-white/50 mr-1.5" aria-hidden="true">{open ? "▾" : "▸"}</span>
-                        {fmtDia(fecha)}
-                      </td>
-                      <Celdas t={t} productos={productosCol} hayOtros={hayOtros} acum={acum} />
-                    </tr>
-                    {open &&
-                      [...agrupar(items, "asesor").entries()]
-                        .map(([nombre, its]) => [nombre, sumar(its)])
-                        .sort((a, b) => b[1].total - a[1].total)
-                        .map(([nombre, ta]) => (
-                          <tr key={`${fecha}-${nombre}`} className="bg-white/[0.03] text-white/75">
-                            <td className="pl-8 pr-2.5 py-1 whitespace-nowrap">{nombre}</td>
-                            <Celdas t={ta} productos={productosCol} hayOtros={hayOtros} acum={null} />
-                          </tr>
-                        ))}
-                  </Fragment>
-                );
-              })}
+              {dias.map(({ fecha, t, acum }) => (
+                <tr key={fecha} className="border-t border-white/10 text-white/90 hover:bg-white/5">
+                  <td className="px-2.5 py-1.5 whitespace-nowrap">{fmtDia(fecha)}</td>
+                  <Celdas t={t} productos={productosCol} hayOtros={hayOtros} acum={acum} conFacturacion={conFacturacion} />
+                </tr>
+              ))}
             </tbody>
             <tfoot className="sticky bottom-0">
               <tr className="border-t border-white/20 bg-xuma-surface-2 font-bold text-white">
                 <td className="px-2.5 py-1.5">Total del mes</td>
-                <Celdas t={totalGeneral} productos={productosCol} hayOtros={hayOtros} acum={null} />
+                <Celdas t={totalGeneral} productos={productosCol} hayOtros={hayOtros} acum={null} conFacturacion={conFacturacion} />
               </tr>
             </tfoot>
           </table>

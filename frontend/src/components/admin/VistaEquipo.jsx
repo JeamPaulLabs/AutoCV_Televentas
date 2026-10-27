@@ -28,19 +28,17 @@ function Avisos({ avisos }) {
   );
 }
 
-/** "Resumen": todo el reporte en una sola vista, igual que el HTML que se
- * descarga (src/reporte_html.py): desempeño diario, gasera, producto, Rueda
- * Seguro y Billetera Protegida; más el día a día por producto. */
+/** "Resumen": todo el reporte en una sola vista, como el HTML que se descarga
+ * (src/reporte_html.py): avance y podio, día a día con los productos, y
+ * facturación por gasera y por producto. Sin tablas por asesor. */
 function Resumen({ data }) {
-  const rs = data.rueda_segura.tabla_dias.length > 0;
-  const bp = (data.billetera?.tabla_dias?.length || 0) > 0;
-
   return (
-    <div className="space-y-5">
-      <div className="grid lg:grid-cols-3 gap-3">
+    <div className="space-y-4">
+      <HeroEquipo data={data} />
+      <div className="grid xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-3 items-start">
         <div>
-          <SeccionTitulo>Desempeño diario</SeccionTitulo>
-          <TablaFacturacion filas={data.tabla_dias} colEtiqueta="fecha_venta" etiqueta="Fecha" campoCantidad="polizas" />
+          <SeccionTitulo>Desempeño diario por producto</SeccionTitulo>
+          <TablaDiaProductos filas={data.dia_producto_estado} />
         </div>
         <div>
           <SeccionTitulo>Facturación por gasera</SeccionTitulo>
@@ -48,31 +46,28 @@ function Resumen({ data }) {
           <SeccionTitulo className="mt-3">Facturación por producto</SeccionTitulo>
           <TablaFacturacion filas={data.tabla_producto} colEtiqueta="producto" etiqueta="Producto" campoCantidad="cantidad" />
         </div>
-        {(rs || bp) && (
-          <div>
-            {rs && (
-              <>
-                <SeccionTitulo>Rueda Seguro — Auditoría (RS)</SeccionTitulo>
-                <TablaConteo filas={data.rueda_segura.tabla_dias} colEtiqueta="fecha_venta" etiqueta="Fecha (RS)" />
-                <SeccionTitulo className="mt-3">Asesor (RS)</SeccionTitulo>
-                <TablaConteo filas={data.rueda_segura.tabla_asesor} colEtiqueta="asesor" etiqueta="Asesor (RS)" />
-              </>
-            )}
-            {bp && (
-              <>
-                <SeccionTitulo className={rs ? "mt-4" : ""}>Billetera Protegida — cuenta en el acumulado</SeccionTitulo>
-                <TablaConteo filas={data.billetera.tabla_dias} colEtiqueta="fecha_venta" etiqueta="Fecha (BP)" />
-                <SeccionTitulo className="mt-3">Asesor (BP)</SeccionTitulo>
-                <TablaConteo filas={data.billetera.tabla_asesor} colEtiqueta="asesor" etiqueta="Asesor (BP)" />
-              </>
-            )}
-          </div>
-        )}
       </div>
+    </div>
+  );
+}
 
-      <div>
-        <SeccionTitulo>Día a día por producto — Cuota Protegida, Billetera Protegida y Rueda Seguro</SeccionTitulo>
-        <TablaDiaProductos filas={data.dia_producto_estado} />
+/** "Vanti": los mismos datos que Resumen, solo conteos (sin facturación ni
+ * pesos), para compartir con Vanti. */
+function Vanti({ data }) {
+  return (
+    <div className="space-y-4">
+      <HeroEquipo data={data} conFacturacion={false} />
+      <div className="grid xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-3 items-start">
+        <div>
+          <SeccionTitulo>Desempeño diario por producto</SeccionTitulo>
+          <TablaDiaProductos filas={data.dia_producto_estado} conFacturacion={false} />
+        </div>
+        <div>
+          <SeccionTitulo>Ventas por gasera</SeccionTitulo>
+          <TablaConteo filas={data.tabla_gasera} colEtiqueta="entidad_facturacion" etiqueta="Gasera" />
+          <SeccionTitulo className="mt-3">Ventas por producto</SeccionTitulo>
+          <TablaConteo filas={data.tabla_producto} colEtiqueta="producto" etiqueta="Producto" />
+        </div>
       </div>
     </div>
   );
@@ -111,10 +106,10 @@ export default function VistaEquipo({ data }) {
   return (
     <>
       <Avisos avisos={data.avisos} />
-      <HeroEquipo data={data} />
       <Tabs
         tabs={[
           { id: "resumen", label: "Resumen", content: <Resumen data={data} /> },
+          { id: "vanti", label: "Vanti", content: <Vanti data={data} /> },
           {
             id: "asesor",
             label: "Como vamos por asesor",

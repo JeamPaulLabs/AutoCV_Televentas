@@ -21,7 +21,7 @@ function idealEquipo(asesores) {
 
 const MEDALLA = ["#C9A227", "#A7A9AC", "#B0703A"];
 
-export default function HeroEquipo({ data }) {
+export default function HeroEquipo({ data, conFacturacion = true }) {
   const { meta_total, acumulado_total, forecast_total } = data.resumen_equipo;
   const pct = meta_total ? acumulado_total / meta_total : 0;
   const pctForecast = meta_total ? forecast_total / meta_total : 0;
@@ -62,7 +62,7 @@ export default function HeroEquipo({ data }) {
 
         <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
           <Dato label="Forecast de cierre" value={fmtNumero(forecast_total)} sub={`${fmtPct(pctForecast)} de la meta`} />
-          <Dato label="Facturación SERVI" value={fmtMoney(data.kpis.total_facturacion)} />
+          {conFacturacion && <Dato label="Facturación SERVI" value={fmtMoney(data.kpis.total_facturacion)} />}
           <Dato label="Ventas totales" value={fmtNumero(data.kpis.total_ventas)} />
           <Dato label="Días laborados" value={`${cal.dias_laborados} / ${cal.dias_colectivo}`} sub={`${cal.dias_por_laborar} por laborar`} />
         </div>
