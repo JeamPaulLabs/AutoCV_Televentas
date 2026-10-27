@@ -201,6 +201,16 @@ def dashboard(
     mostrar_equipo = (
         modo == "equipo" and autorizado_equipo
     ) or (modo == "auto" and es_supervisor_televentas(current))
+    # Quien puede ver el equipo pero no está vinculado a un asesor (ej. un
+    # superadmin) no tiene "Mi operación": se le muestra la vista de equipo en
+    # vez de un 403 que además le oculta el botón para cambiar de vista.
+    if (
+        not mostrar_equipo
+        and modo != "equipo"
+        and autorizado_equipo
+        and not _mi_alias_norm(int(current["sub"]))
+    ):
+        mostrar_equipo = True
 
     if mostrar_equipo:
         return {

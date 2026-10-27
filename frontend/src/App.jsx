@@ -59,6 +59,9 @@ export default function App() {
   const [periodo, setPeriodo] = useState(periodoInicial());
   const [modo, setModo] = useState("personal");
   const { loading, error, data, reintentar } = useDashboardCache(periodo, modo);
+  // Lo que el backend realmente devolvió manda sobre lo solicitado (un admin
+  // sin asesor vinculado pide "personal" y recibe "equipo").
+  const vistaActual = data?.vista ?? modo;
 
   function cambiarPeriodo(nuevoPeriodo) {
     setPeriodo(nuevoPeriodo);
@@ -113,7 +116,7 @@ export default function App() {
               type="button"
               onClick={() => setModo("personal")}
               className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors duration-200 ${
-                modo === "personal"
+                vistaActual === "personal"
                   ? "bg-xuma-green-dark text-xuma-bg-dark"
                   : "text-white/60 hover:text-white/90"
               }`}
@@ -124,7 +127,7 @@ export default function App() {
               type="button"
               onClick={() => setModo("equipo")}
               className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors duration-200 ${
-                modo === "equipo"
+                vistaActual === "equipo"
                   ? "bg-xuma-green-dark text-xuma-bg-dark"
                   : "text-white/60 hover:text-white/90"
               }`}
