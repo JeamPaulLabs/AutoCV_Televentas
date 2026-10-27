@@ -67,8 +67,9 @@ export default function OtrosiAyuda({ otrosi, miResumen }) {
   }
 
   const pctMin = otrosi.pct_minimo_comision;
+  const condEquipo = otrosi.condicion_equipo !== false;
   const cumplida = otrosi.condicion_equipo_cumplida;
-  const faltan = Math.max(otrosi.meta_equipo_altas_positivas - otrosi.altas_positivas, 0);
+  const faltan = Math.max((otrosi.meta_equipo_altas_positivas ?? 0) - otrosi.altas_positivas, 0);
   const miMeta = miResumen && miResumen.categoria !== "SIN META" && miResumen.meta_mes > 0 ? miResumen : null;
 
   return (
@@ -95,6 +96,7 @@ export default function OtrosiAyuda({ otrosi, miResumen }) {
             </button>
           </div>
 
+          {condEquipo && (
           <Paso n="1" titulo="Todos sumamos para una meta de equipo">
             <Barra
               etiqueta="Altas positivas del equipo"
@@ -108,8 +110,9 @@ export default function OtrosiAyuda({ otrosi, miResumen }) {
                 : `Faltan ${fmtNumero(faltan)} altas. Cuentan las ventas en estado Auditada Web y Alta Transaccional.`}
             </p>
           </Paso>
+          )}
 
-          <Paso n="2" titulo="Si el equipo lo logra, tu meta baja">
+          <Paso n={condEquipo ? "2" : "1"} titulo={condEquipo ? "Si el equipo lo logra, tu meta baja" : `Tu comisión se habilita desde el ${fmtPct(pctMin)} de tu meta`}>
             <div className="space-y-2">
               <Barra
                 etiqueta="Sin otrosí"
@@ -131,9 +134,18 @@ export default function OtrosiAyuda({ otrosi, miResumen }) {
             </p>
           </Paso>
 
-          <Paso n="3" titulo="Si el equipo no llega">
-            <p className="text-xs text-white/80">Se liquida con el esquema principal, con el 100% de la meta.</p>
-          </Paso>
+          {condEquipo ? (
+            <Paso n="3" titulo="Si el equipo no llega">
+              <p className="text-xs text-white/80">Se liquida con el esquema principal, con el 100% de la meta.</p>
+            </Paso>
+          ) : (
+            <Paso n="2" titulo="No depende de lo que haga el resto del equipo">
+              <p className="text-xs text-white/80">
+                Solo cuenta tu propio cumplimiento: no se exige una meta general de altas del equipo. Las ventas
+                canceladas por fallas de audio atribuibles a la operación se reconocen y se pagan.
+              </p>
+            </Paso>
+          )}
 
           <details className="text-xs text-white/75 border-t border-white/10 pt-3">
             <summary className="cursor-pointer font-semibold text-white/85">Ver el texto completo del otrosí</summary>

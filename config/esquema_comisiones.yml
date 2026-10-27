@@ -6,3 +6,24 @@ periodos:
     meta_equipo_altas_positivas: 2000
     pct_minimo_comision: 0.80
     documento: "Otrosí, esquema de comisión septiembre 2026"
+  "2026-10":
+    otrosi_activo: true
+    # Sin condicion general de equipo: la comision se habilita desde el 70% de la
+    # meta individual, sin exigir 2.000 altas positivas.
+    meta_equipo_altas_positivas: null
+    pct_minimo_comision: 0.70
+    fecha_documento: "2026-10-21"
+    documento: "Otrosí, esquema de comisión octubre 2026"
+    reglas:
+      - titulo: "Condición especial de comisionamiento"
+        texto: "Para octubre de 2026 se habilita el pago de comisión desde el 70% de cumplimiento de la meta individual establecida para cada cargo. Aplica a Asesores, Coordinación Comercial y Jefatura Comercial."
+      - titulo: "Altas positivas"
+        texto: "El pago se habilita desde el 70% de la meta asignada a cada cargo. No se exige una meta mínima general de 2.000 altas positivas del equipo."
+      - titulo: "Alcance de la condición"
+        texto: "Llegar al 70% de la meta asignada es la única condición para habilitar la comisión. No depende del resultado consolidado del equipo ni de un mínimo de 2.000 altas positivas."
+      - titulo: "Si el equipo no llega a 2.000"
+        texto: "Que el equipo no alcance 2.000 altas positivas al cierre de octubre no afecta el otrosí. Las comisiones se liquidan por el cumplimiento individual, desde el 70% de la meta."
+      - titulo: "Vigencia"
+        texto: "Aplica únicamente a la liquidación de octubre de 2026. Desde el mes siguiente rige el esquema principal, salvo modificación formal posterior."
+      - titulo: "Cancelaciones por fluctuación de audio"
+        texto: "Las ventas canceladas por fluctuaciones o fallas de audio atribuibles a la operación se reconocen y pagan al asesor, siempre que se valide que la venta fue gestionada y que la cancelación obedeció a esa novedad técnica. También cuentan en la ejecución del asesor y en el resultado del equipo."

@@ -114,8 +114,12 @@ def dashboard(
     periodo: str = Query(..., description="Periodo del mes, formato YYYY-MM (ej. 2026-08)"),
     fecha_corte: str | None = Query(None, description="Corte, formato YYYY-MM-DD; default hoy"),
     modo: str = Query("auto", description="Vista a mostrar: auto, personal o equipo"),
+    asesor: str | None = Query(None, description="Solo supervisión: ver el Como vamos de este asesor (auditoría)"),
     current: dict = Depends(get_current_user),
 ):
+    auditando = bool(asesor and asesor.strip())
+    if auditando and not es_supervisor_televentas(current):
+        raise HTTPException(403, "Solo la supervisión de televentas puede ver a otro asesor.")
     periodo_d = _parse_periodo(periodo)
     fecha_corte_d = _parse_fecha(fecha_corte)
 
@@ -198,14 +202,16 @@ def dashboard(
     # habilitados en auth_dep.USUARIOS_VISTA_ADMINISTRATIVA pueden solicitarla
     # con modo=equipo (switch del frontend).
     autorizado_equipo = puede_ver_vista_equipo(current)
-    mostrar_equipo = (
-        modo == "equipo" and autorizado_equipo
-    ) or (modo == "auto" and es_supervisor_televentas(current))
+    mostrar_equipo = not auditando and (
+        (modo == "equipo" and autorizado_equipo)
+        or (modo == "auto" and es_supervisor_televentas(current))
+    )
     # Quien puede ver el equipo pero no está vinculado a un asesor (ej. un
     # superadmin) no tiene "Mi operación": se le muestra la vista de equipo en
     # vez de un 403 que además le oculta el botón para cambiar de vista.
     if (
         not mostrar_equipo
+        and not auditando
         and modo != "equipo"
         and autorizado_equipo
         and not _mi_alias_norm(int(current["sub"]))
@@ -217,6 +223,7 @@ def dashboard(
             **base,
             "vista": "equipo",
             "puede_ver_equipo": autorizado_equipo,
+            "puede_auditar": es_supervisor_televentas(current),
             "kpis": kpis,
             "podio": df_records(top3[["asesor", "acumulado", "pct_cumpl_acumulado"]]),
             "resumen_equipo": {
@@ -244,7 +251,7 @@ def dashboard(
 
     # Vista personal: nada de facturación, tarifas ni datos de otros
     # asesores -- solo la operación de ventas (conteos) de quien consultó.
-    mi_alias_norm = _mi_alias_norm(int(current["sub"]))
+    mi_alias_norm = _norm_nombre(asesor) if auditando else _mi_alias_norm(int(current["sub"]))
     if not mi_alias_norm:
         raise HTTPException(403, f"Tu usuario no está vinculado a un asesor de televentas (id_usuario={current.get('sub')})")
 
@@ -398,11 +405,22 @@ def dashboard(
     except Exception:
         mi_canceladas = []
 
+    equipo_ref = None
+    if auditando:
+        con_meta = df_proyeccion[df_proyeccion["categoria"] != "SIN META"]
+        if not con_meta.empty:
+            equipo_ref = {
+                "asesores": int(len(con_meta)),
+                "pct_promedio": float(con_meta["pct_cumpl_acumulado"].mean()),
+                "prom_por_dia": float(con_meta["prom_por_dia"].mean()),
+            }
+
     return {
         **base,
         "vista": "personal",
         "disponible": True,
         "puede_ver_equipo": autorizado_equipo,
+        "equipo_ref": equipo_ref,
         "resumen": resumen,
         "detalle_estado": df_records(mi_detalle)[0] if not mi_detalle.empty else None,
         "detalle_dia_dia": detalle_dia_dia,

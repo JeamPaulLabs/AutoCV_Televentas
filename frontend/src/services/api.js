@@ -4,7 +4,7 @@
 
 const TIMEOUT_MS = 15000;
 
-export async function apiGet(path) {
+async function solicitar(path, opciones = {}) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
@@ -13,7 +13,7 @@ export async function apiGet(path) {
     // credentials: "include" -- manda la cookie xuma_session del portal
     // (misma sesión que el CRM/ActiXuma) para que el backend sepa quién
     // consulta y filtre a solo su información.
-    respuesta = await fetch(path, { signal: controller.signal, credentials: "include" });
+    respuesta = await fetch(path, { signal: controller.signal, credentials: "include", ...opciones });
   } catch (err) {
     if (err.name === "AbortError") {
       throw new Error("La solicitud tardó demasiado. Intenta de nuevo.");
@@ -31,8 +31,20 @@ export async function apiGet(path) {
     } catch {
       /* respuesta sin cuerpo JSON */
     }
-    throw new Error(detalle || `Error del servidor (${respuesta.status})`);
+    throw new Error((typeof detalle === "string" && detalle) || `Error del servidor (${respuesta.status})`);
   }
 
   return respuesta.json();
+}
+
+export function apiGet(path) {
+  return solicitar(path);
+}
+
+export function apiPost(path, cuerpo) {
+  return solicitar(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(cuerpo),
+  });
 }

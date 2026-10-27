@@ -17,7 +17,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from .routers import como_vamos
+from .routers import auditoria, como_vamos
 
 app = FastAPI(title="Como Vamos Televentas API")
 
@@ -34,7 +34,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
@@ -56,6 +56,7 @@ async def sin_cache_obsoleto(request: Request, call_next):
 
 
 app.include_router(como_vamos.router, prefix="/api/como-vamos", tags=["como-vamos"])
+app.include_router(auditoria.router, prefix="/api/como-vamos", tags=["auditoria"])
 
 
 @app.get("/api/health")

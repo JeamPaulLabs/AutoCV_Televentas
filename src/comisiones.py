@@ -76,7 +76,9 @@ def estado_otrosi(periodo: dt.date, *dfs_ventas: pd.DataFrame) -> dict | None:
         int(df["nombre_estado"].isin(ESTADOS_POSITIVOS).sum())
         for df in dfs_ventas if not df.empty and "nombre_estado" in df.columns
     )
-    meta = esquema["meta_equipo_altas_positivas"]
+    # meta de equipo vacia = el otrosi no exige condicion general (octubre 2026:
+    # solo cuenta el % minimo individual).
+    meta = esquema.get("meta_equipo_altas_positivas") or None
     return {
         "documento": esquema.get("documento", ""),
         "fecha_documento": esquema.get("fecha_documento"),
@@ -85,5 +87,6 @@ def estado_otrosi(periodo: dt.date, *dfs_ventas: pd.DataFrame) -> dict | None:
         "altas_positivas": altas,
         "pct_avance": altas / meta if meta else 0.0,
         "pct_minimo_comision": esquema["pct_minimo_comision"],
-        "condicion_equipo_cumplida": altas >= meta,
+        "condicion_equipo": meta is not None,
+        "condicion_equipo_cumplida": meta is None or altas >= meta,
     }

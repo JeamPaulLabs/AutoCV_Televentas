@@ -173,3 +173,24 @@ html.tema-claro .capturando .glass { background: #ffffff; }
 .capturando [class*="max-h-"] { max-height: none !important; }
 .capturando .overflow-auto,
 .capturando .overflow-y-auto { overflow: visible !important; }
+
+/* Cambio de pestaña: el contenido entra con un fundido corto y un leve ascenso,
+   en vez de aparecer de golpe. Lo mismo para los botones de la fila de pestañas. */
+@keyframes tab-entrada {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.tab-entrada,
+#acciones-tab > * {
+  animation: tab-entrada 260ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tab-entrada,
+  #acciones-tab > * {
+    animation: none;
+  }
+}
+/* La imagen exportada nunca debe capturarse a mitad de la animación. */
+.capturando, .capturando * {
+  animation: none !important;
+}

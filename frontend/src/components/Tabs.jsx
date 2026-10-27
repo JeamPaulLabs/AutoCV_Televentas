@@ -27,7 +27,7 @@ export default function Tabs({ tabs }) {
       <div id="acciones-tab" className="pb-1 flex items-center gap-2 flex-wrap justify-end" />
       </div>
       {tabs.map((t) => (
-        <div key={t.id} role="tabpanel" hidden={activa !== t.id}>
+        <div key={t.id} role="tabpanel" hidden={activa !== t.id} className={activa === t.id ? "tab-entrada" : undefined}>
           {activa === t.id && t.content}
         </div>
       ))}

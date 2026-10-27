@@ -28,13 +28,16 @@ export default function AvanceEquipo({ data }) {
   const cal = data.calendario;
   const otrosi = data.otrosi;
   const { meta_total, acumulado_total, forecast_total } = data.resumen_equipo;
+  // Hay otrosís (octubre) sin condición general de equipo: ahí el avance es el de
+  // siempre y el otrosí solo baja la meta individual.
+  const condEquipo = Boolean(otrosi) && otrosi.condicion_equipo !== false;
 
-  const meta = otrosi ? otrosi.meta_equipo_altas_positivas : meta_total;
-  const acumulado = otrosi ? otrosi.altas_positivas : acumulado_total;
-  const pct = otrosi ? otrosi.pct_avance : meta_total ? acumulado_total / meta_total : 0;
+  const meta = condEquipo ? otrosi.meta_equipo_altas_positivas : meta_total;
+  const acumulado = condEquipo ? otrosi.altas_positivas : acumulado_total;
+  const pct = condEquipo ? otrosi.pct_avance : meta_total ? acumulado_total / meta_total : 0;
   // Con otrosí no hay forecast individual de altas positivas: se proyecta al
   // ritmo actual (lineal sobre los días laborados), y así se rotula.
-  const proyeccion = otrosi
+  const proyeccion = condEquipo
     ? cal.dias_laborados > 0
       ? (acumulado / cal.dias_laborados) * cal.dias_colectivo
       : acumulado
@@ -48,7 +51,7 @@ export default function AvanceEquipo({ data }) {
   const metaAjustada = otrosi ? meta_total * otrosi.pct_minimo_comision : meta_total;
   const pctSobreAjustada = metaAjustada ? acumulado_total / metaAjustada : 0;
 
-  const faltan = otrosi ? Math.max(otrosi.meta_equipo_altas_positivas - otrosi.altas_positivas, 0) : 0;
+  const faltan = condEquipo ? Math.max(otrosi.meta_equipo_altas_positivas - otrosi.altas_positivas, 0) : 0;
   const porDia = cal.dias_por_laborar > 0 ? Math.ceil(faltan / cal.dias_por_laborar) : faltan;
 
   return (
@@ -56,7 +59,7 @@ export default function AvanceEquipo({ data }) {
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
           <div className="text-[11px] uppercase tracking-wide text-white/70">
-            Avance del equipo{otrosi ? " · altas positivas (otrosí)" : ""} · corte al {data.fecha_corte}
+            Avance del equipo{condEquipo ? " · altas positivas (otrosí)" : ""} · corte al {data.fecha_corte}
           </div>
           <div className="flex items-baseline gap-3">
             <span className="text-4xl font-extrabold text-white tabular-nums">{fmtNumero(acumulado)}</span>
@@ -82,7 +85,9 @@ export default function AvanceEquipo({ data }) {
 
       {otrosi && (
         <p className="mt-2 text-xs text-white/80">
-          {otrosi.condicion_equipo_cumplida
+          {!condEquipo
+            ? `Otrosí vigente: la comisión se habilita desde el ${fmtPct(otrosi.pct_minimo_comision)} de la meta individual, sin exigir una meta general del equipo.`
+            : otrosi.condicion_equipo_cumplida
             ? `Condición del equipo cumplida: la comisión se habilita desde el ${fmtPct(otrosi.pct_minimo_comision)} de la meta individual.`
             : `Faltan ${fmtNumero(faltan)} altas positivas para habilitar la comisión del equipo` +
               (cal.dias_por_laborar > 0 ? ` (≈ ${fmtNumero(porDia)} por día en los ${cal.dias_por_laborar} días que quedan).` : ".")}
@@ -95,7 +100,7 @@ export default function AvanceEquipo({ data }) {
           <Dato
             label={`Meta ajustada por otrosí (${fmtPct(otrosi.pct_minimo_comision)})`}
             value={fmtNumero(metaAjustada)}
-            sub={otrosi.condicion_equipo_cumplida ? "ajuste vigente: condición del equipo cumplida" : `se habilita al llegar a ${fmtNumero(otrosi.meta_equipo_altas_positivas)} altas positivas`}
+            sub={!condEquipo || otrosi.condicion_equipo_cumplida ? "ajuste vigente" : `se habilita al llegar a ${fmtNumero(otrosi.meta_equipo_altas_positivas)} altas positivas`}
           />
           <Dato
             label="Llevamos sobre la meta ajustada"
@@ -107,12 +112,12 @@ export default function AvanceEquipo({ data }) {
 
       <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
         <Dato
-          label={otrosi ? "Al ritmo actual cerramos en" : "Forecast de cierre"}
+          label={condEquipo ? "Al ritmo actual cerramos en" : "Forecast de cierre"}
           value={fmtNumero(proyeccion)}
           sub={`${fmtPct(pctProyeccion)} de la meta`}
         />
         <Dato label="Facturación SERVI" value={fmtMoney(data.kpis.total_facturacion)} />
-        <Dato label="Ventas totales" value={fmtNumero(data.kpis.total_ventas)} sub={otrosi ? "todos los estados" : undefined} />
+        <Dato label="Ventas totales" value={fmtNumero(data.kpis.total_ventas)} sub={condEquipo ? "todos los estados" : undefined} />
         <Dato label="Días laborados" value={`${cal.dias_laborados} / ${cal.dias_colectivo}`} sub={`${cal.dias_por_laborar} por laborar`} />
       </div>
     </div>

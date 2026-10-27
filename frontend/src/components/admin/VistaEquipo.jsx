@@ -6,6 +6,7 @@ import TablaDetalleAsesor from "../TablaDetalleAsesor";
 import TablaFacturacion from "../TablaFacturacion";
 import AvanceEquipo from "./AvanceEquipo";
 import ReporteResumen from "./ReporteResumen";
+import VistaAuditoria from "./VistaAuditoria";
 import SeccionTitulo from "./SeccionTitulo";
 
 /** Avisos de datos: una pastilla llamativa en la fila de pestañas (no ocupa
@@ -103,6 +104,8 @@ export default function VistaEquipo({ data, tema }) {
             ),
           },
           { id: "detalle", label: "Detalle por vendedor", content: <Detalle data={data} /> },
+          // Auditoría por asesor: solo supervisión de televentas (Martha).
+          ...(data.puede_auditar ? [{ id: "auditoria", label: "Auditoría", content: <VistaAuditoria data={data} /> }] : []),
         ]}
       />
       <Avisos avisos={data.avisos} />
