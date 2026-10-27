@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useDashboardCache } from "./hooks/useDashboardCache";
 import MiResumenAsesor from "./components/MiResumenAsesor";
-import OtrosiCard from "./components/OtrosiCard";
+import OtrosiAyuda from "./components/OtrosiAyuda";
 import VistaEquipo from "./components/admin/VistaEquipo";
 
 const PERIODO_STORAGE_KEY = "como-vamos-televentas:periodo";
@@ -154,8 +154,6 @@ export default function App() {
           </div>
         )}
 
-        {data?.otrosi && <OtrosiCard otrosi={data.otrosi} />}
-
         {data?.vista === "personal" && (
           <MiResumenAsesor
             resumen={data.resumen}
@@ -167,6 +165,10 @@ export default function App() {
 
         {data?.vista === "equipo" && <VistaEquipo data={data} />}
       </main>
+
+      {data?.otrosi && (
+        <OtrosiAyuda otrosi={data.otrosi} miResumen={data.vista === "personal" ? data.resumen : null} />
+      )}
 
       <footer className="px-4 md:px-6 py-2.5 text-[10px] text-white/40 border-t border-white/10 max-w-[1900px] mx-auto">
         Fuente: Ilio, estrategia Televentas · incluye Auditada Web, Alta Transaccional, Digitada Web y Cancelada ·

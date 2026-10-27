@@ -87,3 +87,18 @@ body {
   background: rgb(255 255 255 / 0.05);
   border-bottom: 2px solid var(--color-xuma-green-dark);
 }
+
+/* Botón flotante del otrosí: brilla hasta que se abre la primera vez. */
+@keyframes otrosi-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(0 205 147 / 0.55), 0 8px 24px rgb(0 0 0 / 0.35); }
+  50% { box-shadow: 0 0 0 10px rgb(0 205 147 / 0), 0 0 22px 4px rgb(90 226 128 / 0.55); }
+}
+.otrosi-glow {
+  animation: otrosi-glow 2.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .otrosi-glow {
+    animation: none;
+    box-shadow: 0 0 0 3px rgb(90 226 128 / 0.6), 0 8px 24px rgb(0 0 0 / 0.35);
+  }
+}
