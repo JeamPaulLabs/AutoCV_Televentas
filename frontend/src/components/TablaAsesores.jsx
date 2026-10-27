@@ -1,24 +1,12 @@
 import { fmtMoney, fmtNumero, fmtPct } from "../utils/formato";
+import { SEMAFORO, nivelSemaforo } from "../utils/semaforo";
 
-// Paleta de estado validada (skill dataviz) -- nunca se inventa color para
-// esto, es la misma que usa el generador HTML estático.
-const GOOD = "#0ca30c";
-const WARNING = "#fab219";
-const CRITICAL = "#d03b3b";
-
-function semaforo(pctCumpl, pctCumplIdeal) {
-  if (pctCumplIdeal <= 0) return GOOD;
-  const razon = pctCumpl / pctCumplIdeal;
-  if (razon >= 1) return GOOD;
-  if (razon >= 0.8) return WARNING;
-  return CRITICAL;
-}
 
 export default function TablaAsesores({ filas }) {
   const ordenadas = [...filas].sort((a, b) => b.pct_cumpl_acumulado - a.pct_cumpl_acumulado);
 
   return (
-    <div className="glass rounded-xl overflow-auto text-xs max-h-[420px]">
+    <div className="glass rounded-xl overflow-auto text-xs max-h-[calc(100vh-300px)]">
       <table className="w-full border-collapse min-w-[900px]">
         <thead>
           <tr className="tabla-header text-white text-left sticky top-0 z-10">
@@ -37,7 +25,7 @@ export default function TablaAsesores({ filas }) {
         </thead>
         <tbody>
           {ordenadas.map((fila) => {
-            const color = semaforo(fila.pct_cumpl_acumulado, fila.pct_cump_ideal);
+            const nivel = SEMAFORO[nivelSemaforo(fila.pct_cumpl_acumulado, fila.pct_cump_ideal)];
             const ancho = Math.min(fila.pct_cumpl_acumulado * 100, 100);
             return (
               <tr key={fila.asesor} className="border-t border-white/10 text-white/85">
@@ -54,13 +42,17 @@ export default function TablaAsesores({ filas }) {
                 <td className="px-2.5 py-1 text-right tabular-nums">{fmtNumero(fila.acumulado)}</td>
                 <td className="px-2.5 py-1">
                   <div className="flex items-center gap-1.5 min-w-[110px]">
-                    <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
+                    <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
                       <div
                         className="h-full rounded-full"
-                        style={{ width: `${ancho}%`, background: color }}
+                        style={{ width: `${ancho}%`, background: nivel.color }}
                       />
                     </div>
-                    <span className="text-[11px] tabular-nums text-white/60 min-w-[38px]">
+                    <span
+                      className="text-xs tabular-nums text-white/85 min-w-[56px]"
+                      title={nivel.texto}
+                    >
+                      <span aria-hidden="true" style={{ color: nivel.color }}>{nivel.icono}</span>{" "}
                       {fmtPct(fila.pct_cumpl_acumulado)}
                     </span>
                   </div>

@@ -115,6 +115,35 @@ def resumen_bp_por_asesor(df_bp: pd.DataFrame) -> pd.DataFrame:
     return _conteo_por_asesor(df_bp)
 
 
+def _codigo_producto(producto: pd.Series) -> pd.Series:
+    """Código corto del producto (CP / BP / RS / PCV), mismo criterio que
+    etiquetaProducto() del frontend (MiResumenAsesor.jsx)."""
+    p = producto.fillna("").astype(str).str.upper()
+    codigo = pd.Series("CP", index=p.index)
+    codigo[p.str.contains("COMBO")] = "PCV"
+    codigo[p.str.contains("RUEDA")] = "RS"
+    codigo[p.str.contains("BILLETERA")] = "BP"
+    return codigo
+
+
+def resumen_dia_producto_estado(df: pd.DataFrame) -> pd.DataFrame:
+    """Día a día de la vista administrativa: una fila por fecha x asesor x
+    producto x estado, con cantidad y Facturación SERVI. Formato largo para que
+    el frontend filtre por producto/asesor y totalice sin otra llamada."""
+    columnas = ["fecha_venta", "asesor", "producto", "nombre_estado", "cantidad", "facturacion_servi"]
+    if df.empty:
+        return pd.DataFrame({c: [] for c in columnas})
+    base = df.assign(producto=_codigo_producto(df["producto"]))
+    tabla = (
+        base.groupby(["fecha_venta", "asesor", "producto", "nombre_estado"], dropna=False)
+        .agg(cantidad=("id_poliza", "count"), facturacion_servi=("facturacion_servi", "sum"))
+        .reset_index()
+        .sort_values(["fecha_venta", "asesor"])
+    )
+    tabla["fecha_venta"] = tabla["fecha_venta"].astype(str)
+    return tabla
+
+
 def resumen_por_estado(df: pd.DataFrame) -> pd.DataFrame:
     tabla = (
         df.groupby("nombre_estado")

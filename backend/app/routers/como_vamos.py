@@ -33,6 +33,7 @@ from src.metas_repo import asesores_sin_meta, leer_metas
 from src.pivote import (
     kpis_facturacion,
     pivote_asesor_estado,
+    resumen_dia_producto_estado,
     resumen_bp_por_asesor,
     resumen_bp_por_dia,
     resumen_por_dia,
@@ -214,6 +215,7 @@ def dashboard(
                 "forecast_total": float(df_proyeccion["forecast"].sum()),
             },
             "tabla_dias": df_records(df_por_dia),
+            "dia_producto_estado": df_records(resumen_dia_producto_estado(df_ventas)),
             "tabla_producto": df_records(df_por_producto),
             "tabla_gasera": df_records(df_por_gasera),
             "tabla_estados": df_records(df_por_estado),

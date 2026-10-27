@@ -20,3 +20,15 @@ export function nombreCorto(nombre) {
   const mitad = Math.floor((tokens.length + 1) / 2);
   return `${tokens[0]} ${tokens[mitad]}`;
 }
+
+
+/** "2026-10-05" -> "lun 05 oct". Se arma como fecha LOCAL (new Date("YYYY-MM-DD")
+ * la lee como UTC y en Colombia cae un día antes). */
+export function fmtDia(iso) {
+  const [anio, mes, dia] = String(iso).split("T")[0].split("-").map(Number);
+  if (!anio || !mes || !dia) return String(iso);
+  const d = new Date(anio, mes - 1, dia);
+  const sem = d.toLocaleDateString("es-CO", { weekday: "short" }).replace(".", "");
+  const mesCorto = d.toLocaleDateString("es-CO", { month: "short" }).replace(".", "");
+  return `${sem} ${String(dia).padStart(2, "0")} ${mesCorto}`;
+}
