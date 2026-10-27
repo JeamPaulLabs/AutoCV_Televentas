@@ -38,7 +38,7 @@ export default function VistaAuditoria({ data }) {
           id="selector-asesor"
           value={asesor}
           onChange={(e) => setAsesor(e.target.value)}
-          className="glass rounded-lg px-3 py-1.5 text-sm text-white bg-transparent min-w-[260px]"
+          className="campo text-sm min-w-[280px]"
         >
           <option value="">Selecciona un asesor…</option>
           {asesores.map((a) => (

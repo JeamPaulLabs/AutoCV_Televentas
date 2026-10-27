@@ -30,7 +30,7 @@ const ESTILO_SUGERENCIA = {
 };
 
 const ES_AUDIO = /audio|fluctu|falla/i;
-const INPUT = "w-full rounded-lg bg-white/5 border border-white/15 px-2 py-1 text-xs text-white placeholder:text-white/40";
+const INPUT = "campo w-full text-xs";
 
 function textoObservacion(c) {
   return c.observacion || c.observacion_re_auditoria || c.observaciones_reauditoria || "";

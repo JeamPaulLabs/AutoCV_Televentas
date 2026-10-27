@@ -202,3 +202,42 @@ html.tema-claro .capturando .glass { background: #ffffff; }
 .capturando, .capturando * {
   animation: none !important;
 }
+
+/* ---------- Campos de formulario (select, input, textarea) ----------
+   Fondo y texto propios en cada tema: el desplegable nativo del select usa el
+   color de las <option>; sin esto salía letra blanca sobre fondo blanco. */
+select, input, textarea { color-scheme: dark; }
+html.tema-claro select, html.tema-claro input, html.tema-claro textarea { color-scheme: light; }
+
+.campo {
+  background-color: color-mix(in srgb, var(--color-white) 7%, transparent);
+  color: var(--color-white);
+  border: 1px solid color-mix(in srgb, var(--color-white) 22%, transparent);
+  border-radius: 0.6rem;
+  padding: 0.35rem 0.65rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.campo::placeholder { color: color-mix(in srgb, var(--color-white) 50%, transparent); }
+.campo:hover { border-color: color-mix(in srgb, var(--color-white) 40%, transparent); }
+.campo:focus-visible {
+  outline: none;
+  border-color: #00cd93;
+  box-shadow: 0 0 0 3px rgb(0 205 147 / 0.25);
+}
+select.campo {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 2rem;
+  cursor: pointer;
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+  background-size: 12px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 4.5l4 4 4-4' fill='none' stroke='%23f5f5f7' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+html.tema-claro select.campo {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 4.5l4 4 4-4' fill='none' stroke='%230d1024' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+/* Lista desplegable: fondo sólido con contraste en ambos temas */
+select option { background-color: #141834; color: #f5f5f7; padding: 0.4rem 0.6rem; }
+html.tema-claro select option { background-color: #ffffff; color: #0d1024; }
+select option:checked { background-color: #00cd93; color: #0a0052; }

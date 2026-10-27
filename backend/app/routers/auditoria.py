@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import datetime as dt
 import json
-from pathlib import Path
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -21,7 +20,35 @@ from .como_vamos import _norm_nombre, _parse_fecha, _parse_periodo
 
 router = APIRouter()
 
-_DDL = Path(__file__).resolve().parents[3] / "sql" / "ddl_auditoria_asesor.sql"
+# La imagen de producción no trae la carpeta sql/: el DDL va embebido (copia de
+# sql/ddl_auditoria_asesor.sql).
+_DDL = """
+CREATE TABLE IF NOT EXISTS como_vamos_televentas.auditoria_asesor (
+    id                   BIGSERIAL PRIMARY KEY,
+    periodo              DATE        NOT NULL,              -- primer día del mes
+    fecha_corte          DATE        NOT NULL,              -- corte del tablero auditado
+    asesor               TEXT        NOT NULL,
+    asesor_norm          TEXT        NOT NULL,
+    auditor_id           INTEGER     NOT NULL,              -- sub del JWT (quién auditó)
+    auditor_nombre       TEXT,
+    items                JSONB       NOT NULL DEFAULT '{}'::jsonb,  -- {"meta": true, ...}
+    resultado            TEXT        NOT NULL
+                         CHECK (resultado IN ('conforme', 'con_observaciones', 'requiere_revision')),
+    observaciones        TEXT,
+    dias_calendario      INTEGER,                           -- días laborados según calendario
+    dias_ajustados       INTEGER,                           -- días laborados ajustados por Martha
+    fechas_no_laboradas  JSONB       NOT NULL DEFAULT '[]'::jsonb,
+    motivo_dias          TEXT,
+    novedades            JSONB       NOT NULL DEFAULT '[]'::jsonb,  -- [{tipo, desde, hasta, nota, afecto_ventas}]
+    canceladas_audio     JSONB       NOT NULL DEFAULT '[]'::jsonb,  -- contratos marcados como falla de audio
+    sugerencias          JSONB       NOT NULL DEFAULT '[]'::jsonb,  -- lo que mostraba el sistema al guardar
+    resumen              JSONB       NOT NULL DEFAULT '{}'::jsonb,  -- meta, acumulado, % al momento de guardar
+    creado_en            TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS ix_auditoria_asesor_periodo
+    ON como_vamos_televentas.auditoria_asesor (periodo, asesor_norm, creado_en DESC);
+"""
 _tabla_lista = False
 
 COLUMNAS = (
@@ -42,7 +69,7 @@ def _asegurar_tabla(conn) -> None:
     if _tabla_lista:
         return
     with conn.cursor() as cur:
-        cur.execute(_DDL.read_text(encoding="utf-8"))
+        cur.execute(_DDL)
     conn.commit()
     _tabla_lista = True
 
