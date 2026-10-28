@@ -73,13 +73,13 @@ export default function OtrosiAyuda({ otrosi, miResumen }) {
   const miMeta = miResumen && miResumen.categoria !== "SIN META" && miResumen.meta_mes > 0 ? miResumen : null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-40 flex flex-col items-end gap-2">
+    <div className="fixed bottom-4 right-24 z-40 flex flex-col items-end gap-2">
       {abierto && (
         <div
           id="otrosi-panel"
           role="dialog"
           aria-label="Cómo funciona el otrosí"
-          className="modal-solid rounded-2xl p-5 w-[min(400px,calc(100vw-2rem))] max-h-[calc(100vh-6rem)] overflow-auto space-y-4"
+          className="modal-solid rounded-2xl p-5 w-[min(400px,calc(100vw-7rem))] max-h-[calc(100vh-6rem)] overflow-auto space-y-4"
         >
           <div className="flex items-start justify-between gap-2">
             <div>
