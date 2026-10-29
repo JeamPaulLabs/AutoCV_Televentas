@@ -241,3 +241,19 @@ html.tema-claro select.campo {
 select option { background-color: #141834; color: #f5f5f7; padding: 0.4rem 0.6rem; }
 html.tema-claro select option { background-color: #ffffff; color: #0d1024; }
 select option:checked { background-color: #00cd93; color: #0a0052; }
+
+/* Esqueleto de carga: la pantalla real con datos de relleno; todo texto pasa a
+   bloques grises que pulsan, sin tocar el tamaño de nada. */
+.esqueleto { pointer-events: none; user-select: none; animation: esqueleto-pulso 1.4s ease-in-out infinite; }
+.esqueleto * { color: transparent !important; text-shadow: none !important; }
+.esqueleto :is(td, th):not(:has(*)) { border-radius: 0; }
+.esqueleto *:not(:has(*)) {
+  background-color: rgba(128, 128, 128, 0.22) !important;
+  border-radius: 6px;
+  text-shadow: none !important;
+  box-shadow: none !important;
+}
+.esqueleto svg text { fill: transparent !important; }
+.esqueleto svg rect { fill: rgba(128, 128, 128, 0.3) !important; }
+@keyframes esqueleto-pulso { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .esqueleto { animation: none; opacity: 0.8; } }

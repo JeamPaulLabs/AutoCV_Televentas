@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDashboardCache } from "./hooks/useDashboardCache";
 import { useTema } from "./hooks/useTema";
 import logoClaro from "./assets/logo-claro.png";
 import logoOscuro from "./assets/logo-oscuro.png";
-import Esqueleto from "./components/Esqueleto";
+import Esqueleto, { guardarPista } from "./components/Esqueleto";
 import MiResumenAsesor from "./components/MiResumenAsesor";
 import OtrosiAyuda from "./components/OtrosiAyuda";
 import VistaEquipo from "./components/admin/VistaEquipo";
@@ -67,6 +67,7 @@ export default function App() {
   // Lo que el backend realmente devolvió manda sobre lo solicitado (un admin
   // sin asesor vinculado pide "personal" y recibe "equipo").
   const vistaActual = data?.vista ?? modo;
+  useEffect(() => guardarPista(data), [data]);
 
   function cambiarPeriodo(nuevoPeriodo) {
     setPeriodo(nuevoPeriodo);
@@ -154,7 +155,7 @@ export default function App() {
       </header>
 
       <main className="px-4 md:px-6 py-4 max-w-[1900px] mx-auto">
-        {loading && <Esqueleto />}
+        {loading && <Esqueleto periodo={periodo} tema={tema} />}
 
         {error && (
           <div className="glass rounded-2xl px-4 py-4 text-sm text-white">
