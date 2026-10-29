@@ -14,7 +14,7 @@ from pathlib import Path
 
 from src.calculo import calcular_proyeccion
 from src.calendario import Calendario
-from src.exclusiones import cargar_excluidos
+from src.exclusiones import excluidos_del_periodo
 from src.ilio_repo import (
     cerrar_mes,
     leer_rueda_segura,
@@ -64,7 +64,7 @@ def main() -> None:
     if not cerrado:
         refrescar_ventas_mes_actual(periodo, df_ventas)
 
-    excluidos = cargar_excluidos()
+    excluidos = excluidos_del_periodo(df_ventas)
     faltantes = asesores_sin_meta(df_ventas, df_metas, set(excluidos))
     if faltantes:
         print("AVISO: asesores con ventas pero sin meta cargada (revisar conciliación de nombres):")

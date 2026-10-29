@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from src.calculo import calcular_proyeccion
 from src.calendario import Calendario
 from src.db import get_conexion
-from src.exclusiones import cargar_excluidos
+from src.exclusiones import excluidos_del_periodo
 from src.ilio_repo import (
     ESTADOS_POSITIVOS,
     es_billetera,
@@ -129,7 +129,7 @@ def dashboard(
     df_ventas = con_facturacion_servi(df_ventas, df_tarifas)
     cerrado = periodo_esta_cerrado(periodo_d) is not None
 
-    excluidos = set(cargar_excluidos())
+    excluidos = set(excluidos_del_periodo(df_ventas))
     faltantes = asesores_sin_meta(df_ventas, df_metas, excluidos)
     sin_tarifa = planes_sin_tarifa(df_ventas)
 
