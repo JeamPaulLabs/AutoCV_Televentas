@@ -241,112 +241,153 @@ function claveEstado(estado) {
   return "proceso";
 }
 
-/** Ventas día a día en una sola vista: una tarjeta por fecha dentro de una
- * cuadrícula que se reacomoda sola (más o menos columnas según el ancho), de
- * modo que todos los días del mes se ven sin scroll en pantalla completa y a
- * media pantalla. Cada tarjeta muestra el total del día, los productos y los
- * estados; todo es clicable y abre el detalle de contratos. */
+const COLOR_PRODUCTO = { CP: "var(--prod-cp)", PCV: "var(--prod-pcv)", RS: "var(--prod-rs)", BP: "var(--prod-bp)" };
+
+/** Una tabla de días (se usa una o dos veces según cuántos días haya). */
+function BloqueDias({ filas, productos, canceladas, abrir, onRevision }) {
+  const celda = (n, clase, onClick, titulo) => (
+    <td className="px-2 py-1 text-right tabular-nums">
+      {n ? (
+        <button
+          type="button"
+          onClick={onClick}
+          title={titulo}
+          className={`min-w-[1.75rem] rounded px-1 cursor-pointer hover:bg-white/10 transition-colors ${clase}`}
+        >
+          {n}
+        </button>
+      ) : (
+        <span className="text-white/25">·</span>
+      )}
+    </td>
+  );
+  return (
+    <table className="w-full text-xs xl:text-[13px]">
+      <thead>
+        <tr className="tabla-header text-white/60">
+          <th className="text-left font-semibold px-3 py-1.5">Fecha</th>
+          {productos.map((c) => (
+            <th key={c} className="text-right font-semibold px-2 py-1.5" title={NOMBRE_PRODUCTO[c]}>{c}</th>
+          ))}
+          {COLUMNAS_ESTADO.map((e, i) => (
+            <th key={e.clave} title={e.titulo} className={`text-right font-semibold px-2 py-1.5 ${i === 0 ? "border-l border-white/15" : ""}`}>
+              <span className={`inline-block w-2 h-2 rounded-full mr-1 ${e.punto}`} />
+              <span className="max-xl:hidden">{e.etiqueta}</span>
+              <span className="xl:hidden">{e.etiqueta.slice(0, 4)}.</span>
+            </th>
+          ))}
+          <th className="text-right font-semibold px-3 py-1.5 border-l border-white/15">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {filas.map(({ fecha, items, f }) => {
+          const nCanc = canceladas.filter((c) => items.some((v) => normContratoJs(v.contrato) === normContratoJs(c.numero_contrato)));
+          return (
+            <tr key={fecha} className="border-t border-white/10 hover:bg-white/[0.04]">
+              <td className="px-3 py-1 text-white whitespace-nowrap">
+                {fmtFecha(fecha)}
+                {nCanc.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => onRevision(nCanc)}
+                    className="ml-1.5 px-1 rounded-full text-[10px] bg-red-900/60 text-red-200 cursor-pointer hover:brightness-125 transition"
+                    title="Ver revisión de canceladas de este día"
+                  >
+                    📋
+                  </button>
+                )}
+              </td>
+              {productos.map((c) => (
+                <FragmentoCelda key={c}>
+                  {celda(f[c], "text-white font-semibold", () => abrir(fecha, NOMBRE_PRODUCTO[c], items.filter((v) => etiquetaProducto(v.producto).corto === c)), NOMBRE_PRODUCTO[c])}
+                </FragmentoCelda>
+              ))}
+              {COLUMNAS_ESTADO.map((e) => (
+                <FragmentoCelda key={e.clave}>
+                  {celda(f[e.clave], `${e.clase} font-bold`, () => abrir(fecha, e.etiqueta, items.filter((v) => claveEstado(v.estado) === e.clave)), e.etiqueta)}
+                </FragmentoCelda>
+              ))}
+              <td className="px-3 py-1 text-right text-white font-bold tabular-nums">
+                <button
+                  type="button"
+                  onClick={() => abrir(fecha, "Total", items)}
+                  className="min-w-[1.75rem] rounded px-1 cursor-pointer hover:bg-white/10 transition-colors"
+                >
+                  {items.length}
+                </button>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+/** Ventas día a día en tabla. Para que se vean todos los días sin scroll, si
+ * hay más de 12 días y el ancho lo permite (lg+) se parte en dos tablas lado a
+ * lado (primera y segunda mitad del mes); en pantallas angostas queda una sola
+ * tabla con scroll interno. Cada número abre el detalle de contratos. */
 function TablaDesempeno({ ventas, canceladas }) {
   const [detalle, setDetalle] = useState(null);
   const [popupCanceladas, setPopupCanceladas] = useState(null);
 
-  const totales = { positivas: 0, proceso: 0, canceladas: 0 };
-  const dias = agruparPorDia(ventas)
+  const vacio = () => ({ ...Object.fromEntries(COLUMNAS_PRODUCTO.map((c) => [c, 0])), positivas: 0, proceso: 0, canceladas: 0 });
+  const totales = vacio();
+  const filas = agruparPorDia(ventas)
     .slice()
-    .reverse() // cronológico: el día 1 arriba a la izquierda
+    .reverse() // cronológico: del día 1 hacia adelante
     .map(([fecha, items]) => {
-      const estados = { positivas: 0, proceso: 0, canceladas: 0 };
-      const prods = new Map();
+      const f = vacio();
       for (const v of items) {
-        estados[claveEstado(v.estado)] += 1;
-        totales[claveEstado(v.estado)] += 1;
         const { corto } = etiquetaProducto(v.producto);
-        prods.set(corto, (prods.get(corto) || 0) + 1);
+        for (const acc of [f, totales]) {
+          acc[corto] += 1;
+          acc[claveEstado(v.estado)] += 1;
+        }
       }
-      const productos = COLUMNAS_PRODUCTO.filter((c) => prods.has(c)).map((c) => [c, prods.get(c)]);
-      return { fecha, items, estados, productos };
+      return { fecha, items, f };
     });
+  // Solo los productos que el asesor realmente vendió: menos columnas vacías.
+  const productos = COLUMNAS_PRODUCTO.filter((c) => totales[c] > 0);
+
+  const partir = filas.length > 12;
+  const mitad = Math.ceil(filas.length / 2);
+  const bloques = partir ? [filas.slice(0, mitad), filas.slice(mitad)] : [filas];
 
   const abrir = (fecha, etiqueta, items) => items.length > 0 && setDetalle({ titulo: `${fmtFecha(fecha)} · ${etiqueta}`, items });
 
   return (
     <section className="glass rounded-2xl overflow-hidden flex flex-col min-h-0 flex-1" aria-label="Ventas día a día">
-      <div className="px-4 py-2.5 flex items-center justify-between gap-x-4 gap-y-1 flex-wrap border-b border-white/10">
+      <div className="px-4 py-2 flex items-center justify-between gap-x-4 gap-y-1 flex-wrap border-b border-white/10">
         <h3 className="text-xs uppercase tracking-wide text-white/60 font-semibold">
-          Ventas día a día · {dias.length} {dias.length === 1 ? "día" : "días"} · {ventas.length} ventas
+          Ventas día a día · {filas.length} {filas.length === 1 ? "día" : "días"}
         </h3>
-        <div className="flex items-center gap-3 text-[11px]">
+        <div className="flex items-center gap-x-3 gap-y-0.5 flex-wrap text-[11px] font-semibold">
+          {productos.map((c) => (
+            <span key={c} className="text-white/80" title={NOMBRE_PRODUCTO[c]}>
+              <span className="inline-block w-2 h-2 rounded-sm mr-1" style={{ background: COLOR_PRODUCTO[c] }} />
+              {c} {totales[c]}
+            </span>
+          ))}
+          <span className="text-white/20">|</span>
           {COLUMNAS_ESTADO.map((e) => (
-            <span key={e.clave} className={`${e.clase} font-semibold`} title={e.titulo}>
+            <span key={e.clave} className={e.clase} title={e.titulo}>
               <span className={`inline-block w-2 h-2 rounded-full mr-1 ${e.punto}`} />
               {e.etiqueta} {totales[e.clave]}
             </span>
           ))}
+          <span className="text-white">Total {ventas.length}</span>
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-auto p-3">
-        <div
-          className="grid gap-2 h-full content-start"
-          style={{ gridTemplateColumns: "repeat(auto-fill, minmax(8.75rem, 1fr))" }}
-        >
-          {dias.map(({ fecha, items, estados, productos }) => {
-            const nCanc = canceladas.filter((c) => items.some((v) => normContratoJs(v.contrato) === normContratoJs(c.numero_contrato)));
-            return (
-              <div key={fecha} className="rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2 flex flex-col gap-1.5 min-w-0">
-                <div className="flex items-center justify-between gap-1">
-                  <span className="text-xs font-semibold text-white whitespace-nowrap">{fmtFecha(fecha)}</span>
-                  <button
-                    type="button"
-                    onClick={() => abrir(fecha, "Total", items)}
-                    title="Ver todos los contratos del día"
-                    className="text-lg leading-none font-extrabold text-white tabular-nums rounded-md px-1 hover:bg-white/10 transition-colors cursor-pointer"
-                  >
-                    {items.length}
-                  </button>
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {productos.map(([c, n]) => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => abrir(fecha, NOMBRE_PRODUCTO[c], items.filter((v) => etiquetaProducto(v.producto).corto === c))}
-                      title={NOMBRE_PRODUCTO[c]}
-                      className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold cursor-pointer hover:brightness-125 transition ${BADGE_PRODUCTO[c]}`}
-                    >
-                      {n} {c}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex items-center gap-2 text-[11px] font-bold tabular-nums mt-auto">
-                  {COLUMNAS_ESTADO.map((e) =>
-                    estados[e.clave] ? (
-                      <button
-                        key={e.clave}
-                        type="button"
-                        onClick={() => abrir(fecha, e.etiqueta, items.filter((v) => claveEstado(v.estado) === e.clave))}
-                        title={`${e.etiqueta}: ver contratos`}
-                        className={`flex items-center gap-1 rounded-md px-1 hover:bg-white/10 transition-colors cursor-pointer ${e.clase}`}
-                      >
-                        <span className={`inline-block w-1.5 h-1.5 rounded-full ${e.punto}`} />
-                        {estados[e.clave]}
-                      </button>
-                    ) : null
-                  )}
-                  {nCanc.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setPopupCanceladas(nCanc)}
-                      className="ml-auto px-1 rounded-full text-[10px] bg-red-900/60 text-red-200 cursor-pointer hover:brightness-125 transition"
-                      title="Ver revisión de canceladas de este día"
-                    >
-                      📋
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+      <div className="flex-1 min-h-0 overflow-auto">
+        <div className={`grid ${partir ? "lg:grid-cols-2 lg:divide-x divide-white/10" : ""}`}>
+          {bloques.map((b, i) => (
+            <div key={i} className="min-w-0">
+              <BloqueDias filas={b} productos={productos} canceladas={canceladas} abrir={abrir} onRevision={setPopupCanceladas} />
+            </div>
+          ))}
         </div>
       </div>
 
@@ -362,6 +403,11 @@ function TablaDesempeno({ ventas, canceladas }) {
       {popupCanceladas && <PopupCanceladas items={popupCanceladas} onClose={() => setPopupCanceladas(null)} />}
     </section>
   );
+}
+
+// Los <td> se generan con una función auxiliar; este envoltorio solo aporta la `key`.
+function FragmentoCelda({ children }) {
+  return children;
 }
 
 function MiniStat({ label, value, sub, destacado }) {
