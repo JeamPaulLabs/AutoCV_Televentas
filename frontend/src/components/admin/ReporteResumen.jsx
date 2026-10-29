@@ -186,9 +186,11 @@ function VentasPorDia({ porDia, productos, periodo, fechaCorte }) {
                   <span>{ocultos.size ? "Total (filtrado)" : "Total"}</span>
                   <span className="tabular-nums">{totalVisible(tHover)}</span>
                 </div>
-                <div className="text-[10px] text-white/65 mt-0.5">
-                  Altas {tHover.altas} · Digitadas {tHover.digitadas} · Canceladas {tHover.canceladas}
-                </div>
+                {conFacturacion && (
+                  <div className="text-[10px] text-white/65 mt-0.5">
+                    Altas {tHover.altas} · Digitadas {tHover.digitadas} · Canceladas {tHover.canceladas}
+                  </div>
+                )}
               </>
             ) : (
               <div className="text-white/70">{clave(dia) > fechaCorte ? "Día por venir" : "Sin ventas"}</div>
@@ -325,7 +327,9 @@ export default function ReporteResumen({ data, tema, conFacturacion = true }) {
 
         <div className="grid xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-3 items-stretch">
           <div className="grid grid-cols-2 gap-2 [&>*]:flex [&>*]:flex-col [&>*]:justify-center">
-            <StatTile label="Total ventas" value={fmtNumero(a.total)} sub={`Corte al ${data.fecha_corte}`} destacado />
+            <div className={conFacturacion ? "" : "col-span-2"}>
+              <StatTile label="Total ventas" value={fmtNumero(a.total)} sub={`Corte al ${data.fecha_corte}`} destacado />
+            </div>
             {conFacturacion && <StatTile label="Facturación SERVI" value={fmtMoney(data.kpis.total_facturacion)} />}
             <StatTile label="Altas confirmadas" value={fmtNumero(a.tot.altas)} sub={`${fmtPct(a.total ? a.tot.altas / a.total : 0)} del total`} />
             <StatTile label="Ventas por día" value={(a.total / a.diasLab).toFixed(1).replace(".", ",")} sub={`${a.diasLab} días laborados`} />
@@ -335,8 +339,8 @@ export default function ReporteResumen({ data, tema, conFacturacion = true }) {
 
         {/* Todo el reporte en una sola pantalla: la tabla completa a la izquierda
             (sin scroll) y, a la derecha, grafica, gasera, producto, mezcla y estado. */}
-        <div className="grid xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-3 items-stretch">
-          <TablaDiaProductos titulo="Desempeño diario por producto" filas={data.dia_producto_estado} conFacturacion={conFacturacion} />
+        <div className="grid xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] gap-3 items-stretch">
+          <TablaDiaProductos filas={data.dia_producto_estado} conFacturacion={conFacturacion} />
 
           <div className="flex flex-col gap-3 min-w-0">
             {a.total > 0 && (
@@ -356,9 +360,11 @@ export default function ReporteResumen({ data, tema, conFacturacion = true }) {
                   <Panel titulo="Mezcla de productos">
                     <BarrasProducto productos={a.productos} total={a.total} />
                   </Panel>
-                  <Panel titulo="Estado de las ventas">
-                    <BarraEstados tot={a.tot} />
-                  </Panel>
+                  {conFacturacion && (
+                    <Panel titulo="Estado de las ventas">
+                      <BarraEstados tot={a.tot} />
+                    </Panel>
+                  )}
                 </div>
               )}
             </div>
