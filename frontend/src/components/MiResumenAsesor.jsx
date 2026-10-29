@@ -227,7 +227,6 @@ function PopupContratos({ titulo, items, canceladas, onClose, onRevision }) {
   );
 }
 
-const COLOR_PRODUCTO = { CP: "var(--prod-cp)", PCV: "var(--prod-pcv)", RS: "var(--prod-rs)", BP: "var(--prod-bp)" };
 const COLUMNAS_PRODUCTO = ["CP", "PCV", "RS", "BP"];
 
 const COLUMNAS_ESTADO = [
@@ -242,140 +241,113 @@ function claveEstado(estado) {
   return "proceso";
 }
 
-/** Tabla única día a día: una fila por fecha, con cuántas ventas fueron de cada
- * producto y en qué estado va cada una. Ocupa el alto disponible; el scroll es
- * interno (encabezado y totales fijos). Cada número abre el detalle. */
+/** Ventas día a día en una sola vista: una tarjeta por fecha dentro de una
+ * cuadrícula que se reacomoda sola (más o menos columnas según el ancho), de
+ * modo que todos los días del mes se ven sin scroll en pantalla completa y a
+ * media pantalla. Cada tarjeta muestra el total del día, los productos y los
+ * estados; todo es clicable y abre el detalle de contratos. */
 function TablaDesempeno({ ventas, canceladas }) {
   const [detalle, setDetalle] = useState(null);
   const [popupCanceladas, setPopupCanceladas] = useState(null);
 
-  const vacio = () => ({ ...Object.fromEntries(COLUMNAS_PRODUCTO.map((c) => [c, 0])), positivas: 0, proceso: 0, canceladas: 0 });
-  const totales = vacio();
-  const filas = agruparPorDia(ventas).map(([fecha, items]) => {
-    const f = vacio();
-    for (const v of items) {
-      const { corto } = etiquetaProducto(v.producto);
-      for (const acc of [f, totales]) {
-        acc[corto] += 1;
-        acc[claveEstado(v.estado)] += 1;
+  const totales = { positivas: 0, proceso: 0, canceladas: 0 };
+  const dias = agruparPorDia(ventas)
+    .slice()
+    .reverse() // cronológico: el día 1 arriba a la izquierda
+    .map(([fecha, items]) => {
+      const estados = { positivas: 0, proceso: 0, canceladas: 0 };
+      const prods = new Map();
+      for (const v of items) {
+        estados[claveEstado(v.estado)] += 1;
+        totales[claveEstado(v.estado)] += 1;
+        const { corto } = etiquetaProducto(v.producto);
+        prods.set(corto, (prods.get(corto) || 0) + 1);
       }
-    }
-    return { fecha, items, f };
-  });
-  // Solo se muestran los productos que el asesor realmente vendió: menos columnas vacías.
-  const productos = COLUMNAS_PRODUCTO.filter((c) => totales[c] > 0);
+      const productos = COLUMNAS_PRODUCTO.filter((c) => prods.has(c)).map((c) => [c, prods.get(c)]);
+      return { fecha, items, estados, productos };
+    });
 
   const abrir = (fecha, etiqueta, items) => items.length > 0 && setDetalle({ titulo: `${fmtFecha(fecha)} · ${etiqueta}`, items });
 
-  const celda = (n, clase, onClick, etiqueta) => (
-    <td className="px-3 py-1.5 xl:py-2 text-right tabular-nums">
-      {n ? (
-        <button
-          type="button"
-          onClick={onClick}
-          title={`Ver ${etiqueta}`}
-          className={`min-w-[2rem] rounded-md px-1.5 py-0.5 cursor-pointer hover:bg-white/10 transition-colors ${clase}`}
-        >
-          {n}
-        </button>
-      ) : (
-        <span className="text-white/25">·</span>
-      )}
-    </td>
-  );
-
   return (
     <section className="glass rounded-2xl overflow-hidden flex flex-col min-h-0 flex-1" aria-label="Ventas día a día">
-      <div className="px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap">
-        <h3 className="text-xs uppercase tracking-wide text-white/60 font-semibold">Ventas día a día</h3>
-        <span className="text-[10px] text-white/40">
-          {productos.map((c) => `${c} = ${NOMBRE_PRODUCTO[c]}`).join(" · ")} · Toca un número para ver los contratos
-        </span>
+      <div className="px-4 py-2.5 flex items-center justify-between gap-x-4 gap-y-1 flex-wrap border-b border-white/10">
+        <h3 className="text-xs uppercase tracking-wide text-white/60 font-semibold">
+          Ventas día a día · {dias.length} {dias.length === 1 ? "día" : "días"} · {ventas.length} ventas
+        </h3>
+        <div className="flex items-center gap-3 text-[11px]">
+          {COLUMNAS_ESTADO.map((e) => (
+            <span key={e.clave} className={`${e.clase} font-semibold`} title={e.titulo}>
+              <span className={`inline-block w-2 h-2 rounded-full mr-1 ${e.punto}`} />
+              {e.etiqueta} {totales[e.clave]}
+            </span>
+          ))}
+        </div>
       </div>
-      <div className="flex-1 min-h-0 overflow-auto">
-        <table className="w-full text-xs xl:text-sm">
-          <thead className="sticky top-0 z-10">
-            <tr className="tabla-header text-white/60">
-              <th className="text-left font-semibold px-4 py-2">Fecha</th>
-              {productos.map((c) => (
-                <th key={c} className="text-right font-semibold px-3 py-2" title={NOMBRE_PRODUCTO[c]}>
-                  <span className="inline-block w-2 h-2 rounded-sm mr-1.5" style={{ background: COLOR_PRODUCTO[c] }} />
-                  {c}
-                </th>
-              ))}
-              {COLUMNAS_ESTADO.map((e, i) => (
-                <th key={e.clave} title={e.titulo} className={`text-right font-semibold px-3 py-2 ${i === 0 ? "border-l border-white/15" : ""}`}>
-                  <span className={`inline-block w-2 h-2 rounded-full mr-1.5 ${e.punto}`} />
-                  {e.etiqueta}
-                </th>
-              ))}
-              <th className="text-right font-semibold px-4 py-2 border-l border-white/15">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filas.map(({ fecha, items, f }) => {
-              const nCanc = canceladas.filter((c) => items.some((v) => normContratoJs(v.contrato) === normContratoJs(c.numero_contrato)));
-              return (
-                <tr key={fecha} className="border-t border-white/10 hover:bg-white/[0.03]">
-                  <td className="px-4 py-1.5 xl:py-2 text-white whitespace-nowrap">
-                    {fmtFecha(fecha)}
-                    {nCanc.length > 0 && (
+
+      <div className="flex-1 min-h-0 overflow-auto p-3">
+        <div
+          className="grid gap-2 h-full content-start"
+          style={{ gridTemplateColumns: "repeat(auto-fill, minmax(8.75rem, 1fr))" }}
+        >
+          {dias.map(({ fecha, items, estados, productos }) => {
+            const nCanc = canceladas.filter((c) => items.some((v) => normContratoJs(v.contrato) === normContratoJs(c.numero_contrato)));
+            return (
+              <div key={fecha} className="rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2 flex flex-col gap-1.5 min-w-0">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-xs font-semibold text-white whitespace-nowrap">{fmtFecha(fecha)}</span>
+                  <button
+                    type="button"
+                    onClick={() => abrir(fecha, "Total", items)}
+                    title="Ver todos los contratos del día"
+                    className="text-lg leading-none font-extrabold text-white tabular-nums rounded-md px-1 hover:bg-white/10 transition-colors cursor-pointer"
+                  >
+                    {items.length}
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {productos.map(([c, n]) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => abrir(fecha, NOMBRE_PRODUCTO[c], items.filter((v) => etiquetaProducto(v.producto).corto === c))}
+                      title={NOMBRE_PRODUCTO[c]}
+                      className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold cursor-pointer hover:brightness-125 transition ${BADGE_PRODUCTO[c]}`}
+                    >
+                      {n} {c}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 text-[11px] font-bold tabular-nums mt-auto">
+                  {COLUMNAS_ESTADO.map((e) =>
+                    estados[e.clave] ? (
                       <button
+                        key={e.clave}
                         type="button"
-                        onClick={() => setPopupCanceladas(nCanc)}
-                        className="ml-2 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-red-900/60 text-red-200 cursor-pointer hover:brightness-125 transition"
-                        title="Ver revisión de canceladas de este día"
+                        onClick={() => abrir(fecha, e.etiqueta, items.filter((v) => claveEstado(v.estado) === e.clave))}
+                        title={`${e.etiqueta}: ver contratos`}
+                        className={`flex items-center gap-1 rounded-md px-1 hover:bg-white/10 transition-colors cursor-pointer ${e.clase}`}
                       >
-                        📋 {nCanc.length}
+                        <span className={`inline-block w-1.5 h-1.5 rounded-full ${e.punto}`} />
+                        {estados[e.clave]}
                       </button>
-                    )}
-                  </td>
-                  {productos.map((c) => (
-                    <FragmentoCelda key={c}>
-                      {celda(
-                        f[c],
-                        "text-white font-semibold",
-                        () => abrir(fecha, NOMBRE_PRODUCTO[c], items.filter((v) => etiquetaProducto(v.producto).corto === c)),
-                        NOMBRE_PRODUCTO[c]
-                      )}
-                    </FragmentoCelda>
-                  ))}
-                  {COLUMNAS_ESTADO.map((e) => (
-                    <FragmentoCelda key={e.clave}>
-                      {celda(
-                        f[e.clave],
-                        `${e.clase} font-bold`,
-                        () => abrir(fecha, e.etiqueta, items.filter((v) => claveEstado(v.estado) === e.clave)),
-                        e.etiqueta.toLowerCase()
-                      )}
-                    </FragmentoCelda>
-                  ))}
-                  <td className="px-4 py-1.5 xl:py-2 text-right text-white font-bold tabular-nums">
+                    ) : null
+                  )}
+                  {nCanc.length > 0 && (
                     <button
                       type="button"
-                      onClick={() => abrir(fecha, "Total", items)}
-                      className="min-w-[2rem] rounded-md px-1.5 py-0.5 cursor-pointer hover:bg-white/10 transition-colors"
+                      onClick={() => setPopupCanceladas(nCanc)}
+                      className="ml-auto px-1 rounded-full text-[10px] bg-red-900/60 text-red-200 cursor-pointer hover:brightness-125 transition"
+                      title="Ver revisión de canceladas de este día"
                     >
-                      {items.length}
+                      📋
                     </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-          <tfoot className="sticky bottom-0 z-10">
-            <tr className="tabla-header font-extrabold border-t border-white/20">
-              <td className="px-4 py-2 text-white">Total</td>
-              {productos.map((c) => (
-                <td key={c} className="px-3 py-2 text-right text-white tabular-nums">{totales[c]}</td>
-              ))}
-              {COLUMNAS_ESTADO.map((e) => (
-                <td key={e.clave} className={`px-3 py-2 text-right tabular-nums ${e.clase}`}>{totales[e.clave]}</td>
-              ))}
-              <td className="px-4 py-2 text-right text-white tabular-nums">{ventas.length}</td>
-            </tr>
-          </tfoot>
-        </table>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {detalle && (
@@ -390,11 +362,6 @@ function TablaDesempeno({ ventas, canceladas }) {
       {popupCanceladas && <PopupCanceladas items={popupCanceladas} onClose={() => setPopupCanceladas(null)} />}
     </section>
   );
-}
-
-// Los <td> se generan con una función auxiliar; este envoltorio solo aporta la `key`.
-function FragmentoCelda({ children }) {
-  return children;
 }
 
 function MiniStat({ label, value, sub, destacado }) {
@@ -436,7 +403,7 @@ export default function MiResumenAsesor({ resumen, detalleDiaDia, canceladasRevi
   // En escritorio (lg+) la vista llena el alto restante de la ventana y la tabla
   // absorbe el sobrante con scroll interno; en pantallas chicas fluye normal.
   return (
-    <div className="flex flex-col gap-3 lg:h-[calc(100dvh-9rem)] lg:min-h-[420px]">
+    <div className="flex flex-col gap-3 md:h-[calc(100dvh-9rem)] md:min-h-[460px]">
       {conMeta && (
         <div className="flex flex-col gap-3 shrink-0">
           {resumen.observaciones && (
@@ -446,7 +413,7 @@ export default function MiResumenAsesor({ resumen, detalleDiaDia, canceladasRevi
             </div>
           )}
 
-          <div className="grid lg:grid-cols-[1.3fr_1fr] gap-3">
+          <div className="grid xl:grid-cols-[1.3fr_1fr] gap-3">
             <section className="glass rounded-2xl px-5 py-3.5 xl:py-4" aria-label={metaAjustada != null ? "Meta ajustada" : "Meta del mes"}>
               <div className="text-[11px] uppercase tracking-wide text-white/60 font-semibold">
                 {metaAjustada != null ? `Meta ajustada · otrosí ${fmtPct(otrosi.pct_minimo_comision)}` : "Meta del mes"} · Categoría {resumen.categoria}
@@ -499,7 +466,7 @@ export default function MiResumenAsesor({ resumen, detalleDiaDia, canceladasRevi
               )}
             </section>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-2 gap-2 xl:gap-3">
               <MiniStat label="Positivas" value={fmtNumero(nPositivas)} sub="Auditada + Alta transaccional" destacado />
               <MiniStat label="En proceso" value={fmtNumero(nEnProceso)} sub="Digitada Web, sin auditar" />
               <MiniStat label="Acumulado" value={fmtNumero(resumen.acumulado)} sub="Todas las ventas del mes" />
@@ -514,7 +481,7 @@ export default function MiResumenAsesor({ resumen, detalleDiaDia, canceladasRevi
       )}
 
       {ventas.length > 0 && (
-        <div className="flex flex-col min-h-0 flex-1 max-lg:min-h-[320px] max-lg:max-h-[70vh]">
+        <div className="flex flex-col min-h-0 flex-1 max-md:min-h-[320px]">
           <TablaDesempeno ventas={ventas} canceladas={conRevision} />
         </div>
       )}
