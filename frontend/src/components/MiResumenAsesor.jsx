@@ -243,91 +243,58 @@ function claveEstado(estado) {
 
 const COLOR_PRODUCTO = { CP: "var(--prod-cp)", PCV: "var(--prod-pcv)", RS: "var(--prod-rs)", BP: "var(--prod-bp)" };
 
-/** Una tabla de días (se usa una o dos veces según cuántos días haya). */
-function BloqueDias({ filas, productos, canceladas, abrir, onRevision }) {
-  const celda = (n, clase, onClick, titulo) => (
-    <td className="px-2 py-1 text-right tabular-nums">
-      {n ? (
-        <button
-          type="button"
-          onClick={onClick}
-          title={titulo}
-          className={`min-w-[1.75rem] rounded px-1 cursor-pointer hover:bg-white/10 transition-colors ${clase}`}
-        >
-          {n}
-        </button>
-      ) : (
-        <span className="text-white/25">·</span>
-      )}
-    </td>
-  );
+// Orden fijo de lectura del ciclo de vida de una venta: recién digitada, luego
+// lo que ya maduró, cancelada al final.
+const ORDEN_ESTADO = ["DIGITADA WEB", "AUDITADA WEB", "ALTA TRANSACCIONAL", "CANCELADA"];
+
+function contarPorEstado(ventas) {
+  const conteo = new Map();
+  for (const v of ventas) {
+    const estado = v.estado || "SIN ESTADO";
+    conteo.set(estado, (conteo.get(estado) || 0) + 1);
+  }
+  return [...conteo.entries()].sort((a, b) => {
+    const ia = ORDEN_ESTADO.indexOf(a[0]);
+    const ib = ORDEN_ESTADO.indexOf(b[0]);
+    return (ia === -1 ? ORDEN_ESTADO.length : ia) - (ib === -1 ? ORDEN_ESTADO.length : ib);
+  });
+}
+
+/** Tarjeta "Pólizas por estado": los estados reales de Ilio con su cantidad. */
+function TarjetaEstados({ ventas, onAbrir }) {
+  const estados = contarPorEstado(ventas);
+  const total = ventas.length;
   return (
-    <table className="w-full text-xs xl:text-[13px]">
-      <thead>
-        <tr className="tabla-header text-white/60">
-          <th className="text-left font-semibold px-3 py-1.5">Fecha</th>
-          {productos.map((c) => (
-            <th key={c} className="text-right font-semibold px-2 py-1.5" title={NOMBRE_PRODUCTO[c]}>{c}</th>
-          ))}
-          {COLUMNAS_ESTADO.map((e, i) => (
-            <th key={e.clave} title={e.titulo} className={`text-right font-semibold px-2 py-1.5 ${i === 0 ? "border-l border-white/15" : ""}`}>
-              <span className={`inline-block w-2 h-2 rounded-full mr-1 ${e.punto}`} />
-              <span className="max-xl:hidden">{e.etiqueta}</span>
-              <span className="xl:hidden">{e.etiqueta.slice(0, 4)}.</span>
-            </th>
-          ))}
-          <th className="text-right font-semibold px-3 py-1.5 border-l border-white/15">Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        {filas.map(({ fecha, items, f }) => {
-          const nCanc = canceladas.filter((c) => items.some((v) => normContratoJs(v.contrato) === normContratoJs(c.numero_contrato)));
+    <section className="glass rounded-2xl px-4 py-3" aria-label="Pólizas por estado">
+      <div className="text-[11px] uppercase tracking-wide text-white/60 font-semibold mb-2">Pólizas por estado</div>
+      <div className="space-y-1">
+        {estados.map(([estado, cantidad]) => {
+          const pct = total ? (cantidad / total) * 100 : 0;
           return (
-            <tr key={fecha} className="border-t border-white/10 hover:bg-white/[0.04]">
-              <td className="px-3 py-1 text-white whitespace-nowrap">
-                {fmtFecha(fecha)}
-                {nCanc.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => onRevision(nCanc)}
-                    className="ml-1.5 px-1 rounded-full text-[10px] bg-red-900/60 text-red-200 cursor-pointer hover:brightness-125 transition"
-                    title="Ver revisión de canceladas de este día"
-                  >
-                    📋
-                  </button>
-                )}
-              </td>
-              {productos.map((c) => (
-                <FragmentoCelda key={c}>
-                  {celda(f[c], "text-white font-semibold", () => abrir(fecha, NOMBRE_PRODUCTO[c], items.filter((v) => etiquetaProducto(v.producto).corto === c)), NOMBRE_PRODUCTO[c])}
-                </FragmentoCelda>
-              ))}
-              {COLUMNAS_ESTADO.map((e) => (
-                <FragmentoCelda key={e.clave}>
-                  {celda(f[e.clave], `${e.clase} font-bold`, () => abrir(fecha, e.etiqueta, items.filter((v) => claveEstado(v.estado) === e.clave)), e.etiqueta)}
-                </FragmentoCelda>
-              ))}
-              <td className="px-3 py-1 text-right text-white font-bold tabular-nums">
-                <button
-                  type="button"
-                  onClick={() => abrir(fecha, "Total", items)}
-                  className="min-w-[1.75rem] rounded px-1 cursor-pointer hover:bg-white/10 transition-colors"
-                >
-                  {items.length}
-                </button>
-              </td>
-            </tr>
+            <button
+              key={estado}
+              type="button"
+              onClick={() => onAbrir(`${estado} · total del mes`, ventas.filter((v) => (v.estado || "SIN ESTADO") === estado))}
+              title="Ver los contratos de este estado"
+              className="w-full flex items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-white/10 transition-colors cursor-pointer text-left"
+            >
+              <span className="w-36 shrink-0 text-xs text-white/80 truncate">{estado}</span>
+              <span className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                <span className="block h-full rounded-full bg-xuma-green-dark" style={{ width: `${pct}%` }} />
+              </span>
+              <span className="w-8 shrink-0 text-right text-xs font-bold text-white tabular-nums">{cantidad}</span>
+            </button>
           );
         })}
-      </tbody>
-    </table>
+      </div>
+    </section>
   );
 }
 
-/** Ventas día a día en tabla. Para que se vean todos los días sin scroll, si
- * hay más de 12 días y el ancho lo permite (lg+) se parte en dos tablas lado a
- * lado (primera y segunda mitad del mes); en pantallas angostas queda una sola
- * tabla con scroll interno. Cada número abre el detalle de contratos. */
+/** Tabla completa día a día. Ocupa todo el alto disponible: las filas se
+ * reparten el espacio (más aire con pocos días, compactas con muchos) y solo
+ * hay scroll interno si aun así no caben. Encabezado y totales fijos. Cada
+ * número abre el detalle de contratos; el botón 📋 va junto a las canceladas. */
 function TablaDesempeno({ ventas, canceladas }) {
   const [detalle, setDetalle] = useState(null);
   const [popupCanceladas, setPopupCanceladas] = useState(null);
@@ -351,11 +318,19 @@ function TablaDesempeno({ ventas, canceladas }) {
   // Solo los productos que el asesor realmente vendió: menos columnas vacías.
   const productos = COLUMNAS_PRODUCTO.filter((c) => totales[c] > 0);
 
-  const partir = filas.length > 12;
-  const mitad = Math.ceil(filas.length / 2);
-  const bloques = partir ? [filas.slice(0, mitad), filas.slice(mitad)] : [filas];
+  const abrir = (titulo, items) => items.length > 0 && setDetalle({ titulo, items });
 
-  const abrir = (fecha, etiqueta, items) => items.length > 0 && setDetalle({ titulo: `${fmtFecha(fecha)} · ${etiqueta}`, items });
+  const boton = (n, clase, onClick, titulo) => (
+    <button
+      type="button"
+      onClick={onClick}
+      title={titulo}
+      className={`min-w-[1.75rem] rounded px-1 cursor-pointer hover:bg-white/10 transition-colors ${clase}`}
+    >
+      {n}
+    </button>
+  );
+  const vacioCelda = <span className="text-white/25">·</span>;
 
   return (
     <section className="glass rounded-2xl overflow-hidden flex flex-col min-h-0 flex-1" aria-label="Ventas día a día">
@@ -363,32 +338,81 @@ function TablaDesempeno({ ventas, canceladas }) {
         <h3 className="text-xs uppercase tracking-wide text-white/60 font-semibold">
           Ventas día a día · {filas.length} {filas.length === 1 ? "día" : "días"}
         </h3>
-        <div className="flex items-center gap-x-3 gap-y-0.5 flex-wrap text-[11px] font-semibold">
-          {productos.map((c) => (
-            <span key={c} className="text-white/80" title={NOMBRE_PRODUCTO[c]}>
-              <span className="inline-block w-2 h-2 rounded-sm mr-1" style={{ background: COLOR_PRODUCTO[c] }} />
-              {c} {totales[c]}
-            </span>
-          ))}
-          <span className="text-white/20">|</span>
-          {COLUMNAS_ESTADO.map((e) => (
-            <span key={e.clave} className={e.clase} title={e.titulo}>
-              <span className={`inline-block w-2 h-2 rounded-full mr-1 ${e.punto}`} />
-              {e.etiqueta} {totales[e.clave]}
-            </span>
-          ))}
-          <span className="text-white">Total {ventas.length}</span>
-        </div>
+        <span className="text-[10px] text-white/40">
+          {productos.map((c) => `${c} = ${NOMBRE_PRODUCTO[c]}`).join(" · ")} · Toca un número para ver los contratos
+        </span>
       </div>
 
       <div className="flex-1 min-h-0 overflow-auto">
-        <div className={`grid ${partir ? "lg:grid-cols-2 lg:divide-x divide-white/10" : ""}`}>
-          {bloques.map((b, i) => (
-            <div key={i} className="min-w-0">
-              <BloqueDias filas={b} productos={productos} canceladas={canceladas} abrir={abrir} onRevision={setPopupCanceladas} />
-            </div>
-          ))}
-        </div>
+        <table className="w-full h-full text-xs xl:text-[13px]">
+          <thead className="sticky top-0 z-10">
+            <tr className="tabla-header text-white/60">
+              <th className="text-left font-semibold px-3 py-1.5">Fecha</th>
+              {productos.map((c) => (
+                <th key={c} className="text-right font-semibold px-2 py-1.5" title={NOMBRE_PRODUCTO[c]}>
+                  <span className="inline-block w-2 h-2 rounded-sm mr-1" style={{ background: COLOR_PRODUCTO[c] }} />
+                  {c}
+                </th>
+              ))}
+              {COLUMNAS_ESTADO.map((e, i) => (
+                <th key={e.clave} title={e.titulo} className={`text-right font-semibold px-2 py-1.5 ${i === 0 ? "border-l border-white/15" : ""}`}>
+                  <span className={`inline-block w-2 h-2 rounded-full mr-1 ${e.punto}`} />
+                  {e.etiqueta}
+                </th>
+              ))}
+              <th className="text-right font-semibold px-3 py-1.5 border-l border-white/15">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filas.map(({ fecha, items, f }) => {
+              const nCanc = canceladas.filter((c) => items.some((v) => normContratoJs(v.contrato) === normContratoJs(c.numero_contrato)));
+              return (
+                <tr key={fecha} className="border-t border-white/10 hover:bg-white/[0.04]">
+                  <td className="px-3 py-0.5 text-white whitespace-nowrap">{fmtFecha(fecha)}</td>
+                  {productos.map((c) => (
+                    <td key={c} className="px-2 py-0.5 text-right tabular-nums">
+                      {f[c]
+                        ? boton(f[c], "text-white font-semibold", () => abrir(`${fmtFecha(fecha)} · ${NOMBRE_PRODUCTO[c]}`, items.filter((v) => etiquetaProducto(v.producto).corto === c)), NOMBRE_PRODUCTO[c])
+                        : vacioCelda}
+                    </td>
+                  ))}
+                  {COLUMNAS_ESTADO.map((e, i) => (
+                    <td key={e.clave} className={`px-2 py-0.5 text-right tabular-nums ${i === 0 ? "border-l border-white/10" : ""}`}>
+                      {e.clave === "canceladas" && nCanc.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setPopupCanceladas(nCanc)}
+                          className="mr-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-red-900/60 text-red-200 cursor-pointer hover:brightness-125 transition"
+                          title="Ver revisión de las canceladas de este día"
+                        >
+                          📋 revisión
+                        </button>
+                      )}
+                      {f[e.clave]
+                        ? boton(f[e.clave], `${e.clase} font-bold`, () => abrir(`${fmtFecha(fecha)} · ${e.etiqueta}`, items.filter((v) => claveEstado(v.estado) === e.clave)), e.etiqueta)
+                        : vacioCelda}
+                    </td>
+                  ))}
+                  <td className="px-3 py-0.5 text-right text-white font-bold tabular-nums border-l border-white/10">
+                    {boton(items.length, "", () => abrir(`${fmtFecha(fecha)} · Total`, items), "Ver todos los contratos del día")}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot className="sticky bottom-0 z-10">
+            <tr className="tabla-header font-extrabold border-t border-white/20">
+              <td className="px-3 py-1.5 text-white">Total</td>
+              {productos.map((c) => (
+                <td key={c} className="px-2 py-1.5 text-right text-white tabular-nums">{totales[c]}</td>
+              ))}
+              {COLUMNAS_ESTADO.map((e, i) => (
+                <td key={e.clave} className={`px-2 py-1.5 text-right tabular-nums ${e.clase} ${i === 0 ? "border-l border-white/10" : ""}`}>{totales[e.clave]}</td>
+              ))}
+              <td className="px-3 py-1.5 text-right text-white tabular-nums border-l border-white/10">{ventas.length}</td>
+            </tr>
+          </tfoot>
+        </table>
       </div>
 
       {detalle && (
@@ -405,23 +429,10 @@ function TablaDesempeno({ ventas, canceladas }) {
   );
 }
 
-// Los <td> se generan con una función auxiliar; este envoltorio solo aporta la `key`.
-function FragmentoCelda({ children }) {
-  return children;
-}
-
-function MiniStat({ label, value, sub, destacado }) {
-  return (
-    <div className={`glass rounded-2xl px-3.5 py-2.5 min-w-0 ${destacado ? "ring-1 ring-emerald-400/40" : ""}`}>
-      <div className="text-[10px] uppercase tracking-wide text-white/60 font-semibold truncate">{label}</div>
-      <div className="text-2xl xl:text-3xl font-extrabold text-white tabular-nums leading-tight">{value}</div>
-      <div className="text-[10px] text-white/45 truncate" title={sub}>{sub}</div>
-    </div>
-  );
-}
-
 export default function MiResumenAsesor({ resumen, detalleDiaDia, canceladasRevision, otrosi }) {
   const ventas = detalleDiaDia || [];
+  const [popupEstado, setPopupEstado] = useState(null);
+  const [popupRev, setPopupRev] = useState(null);
 
   if (!resumen && ventas.length === 0) {
     return (
@@ -435,7 +446,6 @@ export default function MiResumenAsesor({ resumen, detalleDiaDia, canceladasRevi
   const sinMeta = conMeta && resumen.categoria === "SIN META";
   const color = !conMeta || sinMeta ? WARNING : semaforo(resumen.pct_cumpl_acumulado, resumen.pct_cump_ideal);
   const nPositivas = ventas.filter((v) => ESTADOS_ALTA.includes(v.estado)).length;
-  const nEnProceso = ventas.filter((v) => v.estado === "DIGITADA WEB").length;
   const conRevision = canceladasRevision || [];
   // Otrosí vigente: la comisión se habilita desde pct_minimo_comision de la meta
   // individual -- se le ajusta la meta a todo asesor que tenga una.
@@ -446,91 +456,94 @@ export default function MiResumenAsesor({ resumen, detalleDiaDia, canceladasRevi
   const escala = conMeta && resumen.meta_mes > 0 ? resumen.meta_mes : 1;
   const pctDe = (n) => Math.min((n / escala) * 100, 100);
 
-  // En escritorio (lg+) la vista llena el alto restante de la ventana y la tabla
-  // absorbe el sobrante con scroll interno; en pantallas chicas fluye normal.
+  // Desde md: columna izquierda (meta + estados) y tabla a la derecha ocupando
+  // todo el alto de la ventana. En pantallas angostas todo se apila.
   return (
-    <div className="flex flex-col gap-3 md:h-[calc(100dvh-9rem)] md:min-h-[460px]">
-      {conMeta && (
-        <div className="flex flex-col gap-3 shrink-0">
-          {resumen.observaciones && (
-            <div className="rounded-2xl border border-amber-300/40 bg-amber-400/10 px-4 py-2 text-xs text-amber-100">
-              <span className="font-semibold">Ajuste en tu meta: </span>
-              {resumen.observaciones}
-            </div>
-          )}
-
-          <div className="grid xl:grid-cols-[1.3fr_1fr] gap-3">
-            <section className="glass rounded-2xl px-5 py-3.5 xl:py-4" aria-label={metaAjustada != null ? "Meta ajustada" : "Meta del mes"}>
-              <div className="text-[11px] uppercase tracking-wide text-white/60 font-semibold">
-                {metaAjustada != null ? `Meta ajustada · otrosí ${fmtPct(otrosi.pct_minimo_comision)}` : "Meta del mes"} · Categoría {resumen.categoria}
-              </div>
-              {sinMeta ? (
-                <p className="mt-2 text-sm text-white/70">Todavía no tienes una meta asignada este mes.</p>
-              ) : (
-                <>
-                  <div className="mt-1 flex items-end gap-x-3 gap-y-1 flex-wrap">
-                    <div className="text-4xl xl:text-5xl font-extrabold text-white tabular-nums leading-none">
-                      {fmtNumero(resumen.acumulado)}
-                      <span className="text-lg xl:text-xl font-semibold text-white/60"> / {fmtNumero(metaPrincipal)}</span>
-                    </div>
-                    <div
-                      className={`text-xs font-bold px-2.5 py-1 rounded-full border ${
-                        faltanPrincipal === 0
-                          ? "bg-emerald-400/15 text-emerald-200 border-emerald-400/40"
-                          : "bg-amber-400/15 text-amber-200 border-amber-400/40"
-                      }`}
-                    >
-                      {faltanPrincipal === 0
-                        ? "¡Ya alcanzaste tu meta!"
-                        : `Te faltan ${fmtNumero(faltanPrincipal)} para ${metaAjustada != null ? "habilitar tu comisión" : "tu meta"}`}
-                    </div>
-                  </div>
-
-                  <div
-                    className={metaAjustada != null ? "mt-6" : "mt-3"}
-                    role="img"
-                    aria-label={`Positivas ${nPositivas} y acumulado ${resumen.acumulado} sobre una meta de ${fmtNumero(metaPrincipal)}`}
-                  >
-                    <div className="relative h-3 rounded-full bg-white/10">
-                      <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${pctDe(resumen.acumulado)}%`, background: "rgb(0 205 147 / 0.35)" }} />
-                      <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${pctDe(nPositivas)}%`, background: `linear-gradient(90deg, ${color}, var(--color-xuma-green-light))` }} />
-                      {metaAjustada != null && (
-                        <div className="absolute -top-1 -bottom-1 w-0.5 rounded bg-white" style={{ left: `${pctDe(metaAjustada)}%` }}>
-                          <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-[10px] text-white/60 whitespace-nowrap">
-                            Meta ajustada · {fmtNumero(metaAjustada)}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-0.5 text-[11px] text-white/60">
-                      <span><i className="inline-block w-2 h-2 rounded-sm mr-1.5 bg-xuma-green-light" />Positivas {fmtNumero(nPositivas)}</span>
-                      <span><i className="inline-block w-2 h-2 rounded-sm mr-1.5" style={{ background: "rgb(0 205 147 / 0.45)" }} />Acumulado {fmtNumero(resumen.acumulado)}</span>
-                      <span className="sm:ml-auto">Ideal a la fecha: {fmtPct(resumen.pct_cump_ideal)} · cumplimiento: {fmtPct(resumen.pct_cumpl_acumulado)}</span>
-                    </div>
-                  </div>
-                </>
-              )}
-            </section>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-2 gap-2 xl:gap-3">
-              <MiniStat label="Positivas" value={fmtNumero(nPositivas)} sub="Auditada + Alta transaccional" destacado />
-              <MiniStat label="En proceso" value={fmtNumero(nEnProceso)} sub="Digitada Web, sin auditar" />
-              <MiniStat label="Acumulado" value={fmtNumero(resumen.acumulado)} sub="Todas las ventas del mes" />
-              <MiniStat
-                label="Forecast de cierre"
-                value={fmtNumero(resumen.forecast)}
-                sub={fmtPct(resumen.pct_forecast) + (otrosi ? " de la meta ajustada" : " de la meta")}
-              />
-            </div>
+    <div className="flex flex-col gap-3 md:flex-row md:h-[calc(100dvh-9rem)] md:min-h-[460px]">
+      <aside className="flex flex-col gap-3 md:w-[19rem] lg:w-[22rem] xl:w-[26rem] shrink-0 md:overflow-y-auto md:min-h-0">
+        {conMeta && resumen.observaciones && (
+          <div className="rounded-2xl border border-amber-300/40 bg-amber-400/10 px-4 py-2 text-xs text-amber-100">
+            <span className="font-semibold">Ajuste en tu meta: </span>
+            {resumen.observaciones}
           </div>
-        </div>
-      )}
+        )}
+
+        {conMeta && (
+          <section className="glass rounded-2xl px-4 py-3" aria-label={metaAjustada != null ? "Meta ajustada" : "Meta del mes"}>
+            <div className="text-[11px] uppercase tracking-wide text-white/60 font-semibold">
+              {metaAjustada != null ? `Meta ajustada · otrosí ${fmtPct(otrosi.pct_minimo_comision)}` : "Meta del mes"} · Categoría {resumen.categoria}
+            </div>
+            {sinMeta ? (
+              <p className="mt-2 text-sm text-white/70">Todavía no tienes una meta asignada este mes.</p>
+            ) : (
+              <>
+                <div className="mt-1 text-4xl font-extrabold text-white tabular-nums leading-none">
+                  {fmtNumero(resumen.acumulado)}
+                  <span className="text-lg font-semibold text-white/60"> / {fmtNumero(metaPrincipal)}</span>
+                </div>
+                <div
+                  className={`mt-2 inline-block text-xs font-bold px-2.5 py-1 rounded-full border ${
+                    faltanPrincipal === 0
+                      ? "bg-emerald-400/15 text-emerald-200 border-emerald-400/40"
+                      : "bg-amber-400/15 text-amber-200 border-amber-400/40"
+                  }`}
+                >
+                  {faltanPrincipal === 0
+                    ? "¡Ya alcanzaste tu meta!"
+                    : `Te faltan ${fmtNumero(faltanPrincipal)} para ${metaAjustada != null ? "habilitar tu comisión" : "tu meta"}`}
+                </div>
+                <div
+                  className={metaAjustada != null ? "mt-6" : "mt-3"}
+                  role="img"
+                  aria-label={`Positivas ${nPositivas} y acumulado ${resumen.acumulado} sobre una meta de ${fmtNumero(metaPrincipal)}`}
+                >
+                  <div className="relative h-3 rounded-full bg-white/10">
+                    <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${pctDe(resumen.acumulado)}%`, background: "rgb(0 205 147 / 0.35)" }} />
+                    <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${pctDe(nPositivas)}%`, background: `linear-gradient(90deg, ${color}, var(--color-xuma-green-light))` }} />
+                    {metaAjustada != null && (
+                      <div className="absolute -top-1 -bottom-1 w-0.5 rounded bg-white" style={{ left: `${pctDe(metaAjustada)}%` }}>
+                        <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-[10px] text-white/60 whitespace-nowrap">
+                          Meta ajustada · {fmtNumero(metaAjustada)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-white/60">
+                    <span><i className="inline-block w-2 h-2 rounded-sm mr-1.5 bg-xuma-green-light" />Positivas {fmtNumero(nPositivas)}</span>
+                    <span><i className="inline-block w-2 h-2 rounded-sm mr-1.5" style={{ background: "rgb(0 205 147 / 0.45)" }} />Acumulado {fmtNumero(resumen.acumulado)}</span>
+                  </div>
+                  <div className="mt-1 text-[11px] text-white/60">
+                    Ideal a la fecha: {fmtPct(resumen.pct_cump_ideal)} · cumplimiento: {fmtPct(resumen.pct_cumpl_acumulado)}
+                  </div>
+                  <div className="mt-1 text-[11px] text-white/60">
+                    Forecast de cierre: <b className="text-white tabular-nums">{fmtNumero(resumen.forecast)}</b> ({fmtPct(resumen.pct_forecast)}
+                    {otrosi ? " de la meta ajustada" : " de la meta"})
+                  </div>
+                </div>
+              </>
+            )}
+          </section>
+        )}
+
+        {ventas.length > 0 && <TarjetaEstados ventas={ventas} onAbrir={(titulo, items) => setPopupEstado({ titulo, items })} />}
+      </aside>
 
       {ventas.length > 0 && (
-        <div className="flex flex-col min-h-0 flex-1 max-md:min-h-[320px]">
+        <div className="flex flex-col min-h-0 min-w-0 flex-1 max-md:min-h-[320px] max-md:max-h-[75vh]">
           <TablaDesempeno ventas={ventas} canceladas={conRevision} />
         </div>
       )}
+
+      {popupEstado && (
+        <PopupContratos
+          titulo={popupEstado.titulo}
+          items={popupEstado.items}
+          canceladas={conRevision}
+          onClose={() => setPopupEstado(null)}
+          onRevision={setPopupRev}
+        />
+      )}
+      {popupRev && <PopupCanceladas items={popupRev} onClose={() => setPopupRev(null)} />}
     </div>
   );
 }
