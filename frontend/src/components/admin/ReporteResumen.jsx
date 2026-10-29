@@ -76,7 +76,7 @@ function useMedida(ref) {
  * La leyenda filtra por producto (clic) y, al pasar por una barra, un recuadro
  * muestra el detalle del día. Colores en variables CSS (ver index.css) para que
  * contrasten en claro y oscuro. */
-function VentasPorDia({ porDia, productos, periodo, fechaCorte }) {
+function VentasPorDia({ porDia, productos, periodo, fechaCorte, conEstados }) {
   const cont = useRef(null);
   const medida = useMedida(cont);
   const [ocultos, setOcultos] = useState(() => new Set());
@@ -186,7 +186,7 @@ function VentasPorDia({ porDia, productos, periodo, fechaCorte }) {
                   <span>{ocultos.size ? "Total (filtrado)" : "Total"}</span>
                   <span className="tabular-nums">{totalVisible(tHover)}</span>
                 </div>
-                {conFacturacion && (
+                {conEstados && (
                   <div className="text-[10px] text-white/65 mt-0.5">
                     Altas {tHover.altas} · Digitadas {tHover.digitadas} · Canceladas {tHover.canceladas}
                   </div>
@@ -345,13 +345,13 @@ export default function ReporteResumen({ data, tema, conFacturacion = true }) {
           <div className="flex flex-col gap-3 min-w-0">
             {a.total > 0 && (
               <Panel titulo="Ventas por día — mes completo" className="flex-1">
-                <VentasPorDia porDia={a.porDia} productos={a.productos} periodo={data.periodo} fechaCorte={data.fecha_corte} />
+                <VentasPorDia porDia={a.porDia} productos={a.productos} periodo={data.periodo} fechaCorte={data.fecha_corte} conEstados={conFacturacion} />
               </Panel>
             )}
             <div className="grid sm:grid-cols-2 gap-3 items-start">
               <div>
-                <SeccionTitulo>{conFacturacion ? "Facturación por gasera" : "Ventas por gasera"}</SeccionTitulo>
-                {tabla(data.tabla_gasera, "entidad_facturacion", "Gasera")}
+                <SeccionTitulo>{conFacturacion ? "Facturación por gasera · CP y PCV" : "Ventas por gasera · CP y PCV"}</SeccionTitulo>
+                {tabla(data.tabla_gasera_cp_pcv ?? data.tabla_gasera, "entidad_facturacion", "Gasera")}
                 <SeccionTitulo className="mt-3">{conFacturacion ? "Facturación por producto" : "Ventas por producto"}</SeccionTitulo>
                 {tabla(data.tabla_producto, "producto", "Producto")}
               </div>

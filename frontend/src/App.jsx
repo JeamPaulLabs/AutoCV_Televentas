@@ -3,6 +3,7 @@ import { useDashboardCache } from "./hooks/useDashboardCache";
 import { useTema } from "./hooks/useTema";
 import logoClaro from "./assets/logo-claro.png";
 import logoOscuro from "./assets/logo-oscuro.png";
+import Esqueleto from "./components/Esqueleto";
 import MiResumenAsesor from "./components/MiResumenAsesor";
 import OtrosiAyuda from "./components/OtrosiAyuda";
 import VistaEquipo from "./components/admin/VistaEquipo";
@@ -153,7 +154,7 @@ export default function App() {
       </header>
 
       <main className="px-4 md:px-6 py-4 max-w-[1900px] mx-auto">
-        {loading && <div className="text-white/60 text-sm">Cargando dashboard…</div>}
+        {loading && <Esqueleto />}
 
         {error && (
           <div className="glass rounded-2xl px-4 py-4 text-sm text-white">
@@ -168,7 +169,7 @@ export default function App() {
           </div>
         )}
 
-        {data?.vista === "personal" && (
+        {!loading && data?.vista === "personal" && (
           <MiResumenAsesor
             resumen={data.resumen}
             detalleDiaDia={data.detalle_dia_dia}
@@ -178,7 +179,7 @@ export default function App() {
           />
         )}
 
-        {data?.vista === "equipo" && <VistaEquipo data={data} tema={tema} />}
+        {!loading && data?.vista === "equipo" && <VistaEquipo data={data} tema={tema} />}
       </main>
 
       {data?.otrosi && (

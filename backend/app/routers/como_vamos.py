@@ -240,6 +240,10 @@ def dashboard(
             "dia_producto_estado": df_records(resumen_dia_producto_estado(df_ventas)),
             "tabla_producto": df_records(df_por_producto),
             "tabla_gasera": df_records(df_por_gasera),
+            # Solo CP y PCV generan Facturación SERVI: Billetera y Rueda Seguro no.
+            "tabla_gasera_cp_pcv": df_records(
+                resumen_por_gasera(df_ventas[~es_billetera(df_ventas) & ~es_rueda_seguro(df_ventas)])
+            ),
             "tabla_estados": df_records(df_por_estado),
             "asesores": df_records(df_proyeccion),
             "detalle_asesor_estado": df_records(df_pivote),
