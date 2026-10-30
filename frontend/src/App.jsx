@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useDashboardCache } from "./hooks/useDashboardCache";
+import { solicitarActualizacionIlio, estadoActualizacionIlio } from "./services/comoVamos";
 import { useTema } from "./hooks/useTema";
 import logoClaro from "./assets/logo-claro.png";
 import logoOscuro from "./assets/logo-oscuro.png";
@@ -62,6 +63,8 @@ function fmtActualizado(iso) {
 export default function App() {
   const [periodo, setPeriodo] = useState(periodoInicial());
   const [modo, setModo] = useState("personal");
+  const [actualizandoIlio, setActualizandoIlio] = useState(false);
+  const [mensajeIlio, setMensajeIlio] = useState(null);
   const { tema, alternar: alternarTema } = useTema();
   const { loading, error, data, reintentar } = useDashboardCache(periodo, modo);
   // Lo que el backend realmente devolvió manda sobre lo solicitado (un admin
@@ -91,6 +94,54 @@ export default function App() {
     }
   }
 
+  async function activarActualizacionIlio() {
+    if (actualizandoIlio) return;
+    setActualizandoIlio(true);
+    setMensajeIlio("Enviando solicitud...");
+    try {
+      const res = await solicitarActualizacionIlio();
+      let intentos = 0;
+      const maxIntentos = 24; // ~2 minutos
+      const poll = async () => {
+        try {
+          const st = await estadoActualizacionIlio();
+          const sol = st?.solicitud;
+          if (sol && (sol.estado === "pendiente" || sol.estado === "en_curso")) {
+            setMensajeIlio(
+              sol.estado === "en_curso"
+                ? "Actualizando Ilio..."
+                : "Solicitud encolada, esperando al proceso..."
+            );
+            intentos += 1;
+            if (intentos < maxIntentos) {
+              setTimeout(poll, 5000);
+            } else {
+              setActualizandoIlio(false);
+              setMensajeIlio("Solicitud encolada. Se ejecutara cuando el proceso del host la atienda.");
+            }
+            return;
+          }
+          setActualizandoIlio(false);
+          if (sol?.estado === "ok") {
+            setMensajeIlio("Ilio actualizado correctamente.");
+            reintentar();
+          } else if (sol?.estado === "error") {
+            setMensajeIlio(sol.mensaje || "Error en la actualizacion de Ilio.");
+          } else {
+            setMensajeIlio(null);
+          }
+        } catch {
+          setActualizandoIlio(false);
+          setMensajeIlio("No se pudo consultar el estado.");
+        }
+      };
+      setTimeout(poll, 3000);
+    } catch (e) {
+      setActualizandoIlio(false);
+      setMensajeIlio(e?.message || "No se pudo solicitar la actualizacion.");
+    }
+  }
+
   return (
     <div className="min-h-screen">
       <header className="header-sticky sticky top-0 z-20 px-4 md:px-6 py-2.5 flex items-center justify-between gap-4 flex-wrap max-w-[1900px] mx-auto">
@@ -113,6 +164,24 @@ export default function App() {
             <span className="text-[10px] text-white/50">
               Ilio actualizado: {fmtActualizado(data.actualizado_en)}
             </span>
+          )}
+          {data?.puede_ver_equipo && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={activarActualizacionIlio}
+                disabled={actualizandoIlio}
+                className="px-3 py-1 rounded-full text-xs font-semibold transition-colors duration-200 bg-xuma-green-dark text-xuma-bg-dark disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+                title="Dispara la actualizacion de Ilio (descarga del portal y carga a BD)"
+              >
+                {actualizandoIlio ? "Actualizando..." : "Actualizar Ilio"}
+              </button>
+              {mensajeIlio && (
+                <span className="text-[10px] text-white/70 max-w-[220px] truncate" title={mensajeIlio}>
+                  {mensajeIlio}
+                </span>
+              )}
+            </div>
           )}
         </div>
         <div className="glass rounded-full p-1 flex gap-1">

@@ -27,6 +27,7 @@ const BADGE_ESTADO = {
   "ALTA TRANSACCIONAL": "bg-emerald-900 text-emerald-200",
   "DIGITADA WEB": "bg-amber-900 text-amber-200",
   "CANCELADA": "bg-red-900 text-red-200",
+  "CANCELADA (EXCEDE)": "bg-purple-900 text-purple-200 border border-purple-500/40",
 };
 const ESTADOS_ALTA = ["AUDITADA WEB", "ALTA TRANSACCIONAL"];
 const BADGE_ESTADO_DEFAULT = "bg-white/15 text-white/80";
@@ -205,7 +206,7 @@ function PopupContratos({ titulo, items, canceladas, onClose, onRevision }) {
                     {corto}
                   </span>
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${BADGE_ESTADO[v.estado] || BADGE_ESTADO_DEFAULT}`}>
-                    {v.estado || "SIN ESTADO"}
+                    {v.estado === "CANCELADA (EXCEDE)" ? "🚫 Excede cupo" : (v.estado || "SIN ESTADO")}
                   </span>
                   {revision && (
                     <button
@@ -238,6 +239,7 @@ const COLUMNAS_ESTADO = [
 function claveEstado(estado) {
   if (ESTADOS_ALTA.includes(estado)) return "positivas";
   if (estado === "CANCELADA") return "canceladas";
+  if (estado === "CANCELADA (EXCEDE)") return "excede";
   return "proceso";
 }
 
@@ -386,6 +388,16 @@ function TablaDesempeno({ ventas, canceladas }) {
                           title="Ver revisión de las canceladas de este día"
                         >
                           📋 revisión
+                        </button>
+                      )}
+                      {e.clave === "canceladas" && items.some((v) => v.estado === "CANCELADA (EXCEDE)") && (
+                        <button
+                          type="button"
+                          onClick={() => abrir(`${fmtFecha(fecha)} · Excede cupo`, items.filter((v) => v.estado === "CANCELADA (EXCEDE)"))}
+                          className="mr-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-900/60 text-purple-200 border border-purple-500/40 cursor-pointer hover:brightness-125 transition"
+                          title="Hubo póliza cancelada por exceder cupo / duplicidad (no suma al acumulado)"
+                        >
+                          🚫 excede
                         </button>
                       )}
                       {f[e.clave]

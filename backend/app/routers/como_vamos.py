@@ -10,8 +10,12 @@ tres cuentan en el acumulado del asesor) o como_vamos_televentas.cierre_mensual
 from __future__ import annotations
 
 import datetime as dt
+import json
+import os
 import re
+import threading
 import unicodedata
+import urllib.request
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -19,6 +23,8 @@ from src.calculo import calcular_proyeccion
 from src.calendario import Calendario
 from src.db import get_conexion
 from src.exclusiones import excluidos_del_periodo
+import psycopg2.extras
+
 from src.ilio_repo import (
     ESTADOS_POSITIVOS,
     es_billetera,
@@ -354,6 +360,7 @@ def dashboard(
             "contrato": getattr(r, "numero_contrato", None),
             "producto": getattr(r, "producto", None),
             "estado": getattr(r, "nombre_estado", None),
+            "observacion_auditoria": getattr(r, "observacion_auditoria", None),
         }
         for r in mis_ventas.itertuples(index=False)
     ]
@@ -436,6 +443,111 @@ def dashboard(
         "detalle_dia_dia": detalle_dia_dia,
         "billetera": mi_billetera,
         "canceladas_revision": mi_canceladas,
+    }
+
+
+def _puede_solicitar_actualizacion(current: dict) -> bool:
+    return bool(
+        puede_ver_vista_equipo(current)
+        or es_supervisor_televentas(current)
+        or roles_auditoria(current)
+    )
+
+
+def _disparar_bridge_si_configurado():
+    """Avisa al puente en el host (si existe) para disparar el sync sin esperar
+    al watcher. Fire-and-forget: no bloquea el request ni falla si no hay puente."""
+    url = (os.getenv("ILIO_SYNC_BRIDGE_URL") or "").strip()
+    if not url:
+        return
+    def _call():
+        try:
+            data = json.dumps({"job_type": "mes_corriente"}).encode("utf-8")
+            req = urllib.request.Request(
+                url.rstrip("/") + "/run",
+                data=data,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=5):
+                pass
+        except Exception:
+            pass
+    threading.Thread(target=_call, daemon=True).start()
+
+
+@router.post("/actualizar-ilio")
+def solicitar_actualizacion_ilio(current: dict = Depends(get_current_user)):
+    """Encola una solicitud de actualizacion de Ilio. El job real lo ejecuta un
+    proceso en el host (watcher/bridge), porque el backend corre en Docker sin
+    acceso a Selenium. Devuelve la solicitud creada o la que ya este en curso."""
+    if not _puede_solicitar_actualizacion(current):
+        raise HTTPException(403, "No tienes permiso para solicitar la actualizacion de Ilio.")
+
+    solicitado_por = str(current.get("nombre") or current.get("sub") or "desconocido")
+    with get_conexion() as conn:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        # Si ya hay una solicitud reciente en curso/pendiente, devolverla en vez
+        # de duplicar.
+        cur.execute(
+            """
+            SELECT id_solicitud, solicitado_por, solicitado_en, job_type, estado,
+                   iniciado_en, finalizado_en, mensaje
+            FROM como_vamos_televentas.solicitudes_actualizacion_ilio
+            WHERE estado IN ('pendiente', 'en_curso')
+              AND solicitado_en > NOW() - INTERVAL '30 minutes'
+            ORDER BY solicitado_en DESC
+            LIMIT 1
+            """
+        )
+        existente = cur.fetchone()
+        if existente:
+            conn.commit()
+            _disparar_bridge_si_configurado()
+            return {"solicitud": dict(existente), "creada": False}
+
+        cur.execute(
+            """
+            INSERT INTO como_vamos_televentas.solicitudes_actualizacion_ilio
+                (solicitado_por, job_type, estado)
+            VALUES (%s, 'mes_corriente', 'pendiente')
+            RETURNING id_solicitud, solicitado_por, solicitado_en, job_type, estado,
+                      iniciado_en, finalizado_en, mensaje
+            """,
+            (solicitado_por,),
+        )
+        nueva = cur.fetchone()
+        conn.commit()
+
+    _disparar_bridge_si_configurado()
+    return {"solicitud": dict(nueva), "creada": True}
+
+
+@router.get("/actualizar-ilio/estado")
+def estado_actualizacion_ilio(current: dict = Depends(get_current_user)):
+    """Ultima solicitud de actualizacion + hora real de la ultima corrida exitosa
+    de Ilio. Usado por el boton del tablero para mostrar progreso."""
+    if not _puede_solicitar_actualizacion(current):
+        raise HTTPException(403, "No tienes permiso para consultar la actualizacion de Ilio.")
+
+    with get_conexion() as conn:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(
+            """
+            SELECT id_solicitud, solicitado_por, solicitado_en, job_type, estado,
+                   iniciado_en, finalizado_en, mensaje
+            FROM como_vamos_televentas.solicitudes_actualizacion_ilio
+            ORDER BY solicitado_en DESC
+            LIMIT 1
+            """
+        )
+        sol = cur.fetchone()
+
+    ua = ultima_actualizacion_ilio()
+    actualizado_en = ua.replace(tzinfo=dt.timezone.utc).isoformat() if ua else None
+    return {
+        "solicitud": dict(sol) if sol else None,
+        "actualizado_en": actualizado_en,
     }
 
 

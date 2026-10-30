@@ -26,3 +26,15 @@ export function listarSeguimiento(periodo, asesor) {
 export function guardarSeguimiento(cuerpo) {
   return apiPost("/api/como-vamos/auditorias/seguimiento", cuerpo);
 }
+
+/** Solicita la actualizacion de Ilio (encola la solicitud; el job lo ejecuta un
+ * proceso en el host). Devuelve { solicitud, creada }. */
+export function solicitarActualizacionIlio() {
+  return apiPost("/api/como-vamos/actualizar-ilio", {});
+}
+
+/** Estado de la ultima solicitud de actualizacion de Ilio + hora real del
+ * ultimo corrido exitoso. */
+export function estadoActualizacionIlio() {
+  return apiGet("/api/como-vamos/actualizar-ilio/estado");
+}

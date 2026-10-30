@@ -64,21 +64,46 @@ def es_rueda_seguro(df: pd.DataFrame) -> pd.Series:
 # compartan el mismo ajuste sin duplicar lógica.
 DUPLICADOS_ILIO_CONOCIDOS = {3183230, 3184799}
 
+# Prioridad para deduplicar estados en el mismo contrato + asesor + producto:
+# Si una póliza se canceló por duplicidad/excede pero la otra quedó en ALTA o AUDITADA,
+# la venta efectiva debe prevalecer. Las canceladas normales o por excede van al final.
+PRIORIDAD_ESTADO = {
+    "ALTA TRANSACCIONAL": 10,
+    "AUDITADA WEB": 9,
+    "VALIDACION CALIDAD": 8,
+    "DIGITADA WEB": 5,
+    "CANCELADA": 2,
+    "CANCELADA (EXCEDE)": 1,
+}
+
+
+def _ajustar_estado_excede(df: pd.DataFrame) -> pd.DataFrame:
+    """Si la póliza es CANCELADA y en observacion_auditoria indica que excede cupo
+    o no carga por exceder, se tipifica como 'CANCELADA (EXCEDE)' para que no se
+    confunda con una cancelación operativa ni sume a las canceladas normales."""
+    if "observacion_auditoria" in df.columns and "nombre_estado" in df.columns:
+        obs = df["observacion_auditoria"].fillna("").astype(str).str.upper()
+        es_excede = (df["nombre_estado"] == "CANCELADA") & (
+            obs.str.contains("EXCEDE") | obs.str.contains("NO CARGA")
+        )
+        df.loc[es_excede, "nombre_estado"] = "CANCELADA (EXCEDE)"
+    return df
+
 
 def _ultimo_estado_por_contrato(df: pd.DataFrame) -> pd.DataFrame:
-    """Deja una sola fila por contrato + asesor + producto: el registro más
-    reciente (fecha_digitacion, y id_poliza como desempate). Un mismo contrato
-    puede tener productos o asesores distintos, y eso son ventas distintas.
-    Los cambios de estado son válidos durante el mes; al cerrarlo, cerrar_mes
-    congela el resultado en cierre_mensual. Cuando una venta avanza de
-    estado, Ilio crea un id_poliza nuevo para el mismo contrato y deja el
-    original en su estado anterior, así que la misma venta se veía dos veces
-    (ver contrato 64509434 de Laura, sept 2026). Contratos nulos se conservan."""
+    """Deja una sola fila por contrato + asesor + producto: el registro con mayor
+    validez (prioridad de estado efectivo sobre cancelaciones por duplicidad, y fecha_digitacion
+    / id_poliza como desempate). Un mismo contrato puede tener productos o asesores distintos,
+    y eso son ventas distintas. Contratos nulos se conservan."""
+    df = _ajustar_estado_excede(df)
     sin_contrato = df["numero_contrato"].isna()
+    df_con = df[~sin_contrato].copy()
+    df_con["_prio"] = df_con["nombre_estado"].map(lambda s: PRIORIDAD_ESTADO.get(s, 0))
     ultimos = (
-        df[~sin_contrato]
-        .sort_values(["fecha_digitacion", "id_poliza"])
+        df_con
+        .sort_values(["_prio", "fecha_digitacion", "id_poliza"])
         .drop_duplicates(["numero_contrato", "asesor", "producto"], keep="last")
+        .drop(columns=["_prio"])
     )
     return pd.concat([ultimos, df[sin_contrato]]).sort_index()
 
@@ -158,7 +183,7 @@ def leer_televentas(periodo: dt.date, fecha_corte: dt.date | None = None) -> pd.
     query = """
         SELECT id_poliza, fecha_venta, fecha_digitacion, asesor, supervisor,
                estrategia, producto, plan, colectivo, entidad_facturacion,
-               tarifa, nombre_estado, numero_contrato
+               tarifa, nombre_estado, numero_contrato, observacion_auditoria
         FROM ilio.v_cuota_protegida
         WHERE estrategia = 'Televentas' AND colectivo IN (%(colectivo)s, %(colectivo_anual)s)
           AND supervisor = %(supervisor)s
@@ -210,7 +235,7 @@ def leer_billetera_protegida(periodo: dt.date, fecha_corte: dt.date | None = Non
     query = """
         SELECT id_poliza, fecha_venta, fecha_digitacion, asesor, supervisor,
                estrategia, producto, plan, colectivo, entidad_facturacion,
-               tarifa, nombre_estado, numero_contrato
+               tarifa, nombre_estado, numero_contrato, observacion_auditoria
         FROM ilio.v_billetera_protegida
         WHERE estrategia = 'Televentas' AND colectivo IN (%(colectivo)s, %(colectivo_anual)s)
           AND supervisor = %(supervisor)s
@@ -244,7 +269,7 @@ def leer_rueda_segura(periodo: dt.date, fecha_corte: dt.date | None = None) -> p
     query = """
         SELECT id_poliza, fecha_venta, fecha_digitacion, asesor, supervisor,
                estrategia, producto, plan, colectivo, entidad_facturacion,
-               tarifa, nombre_estado, numero_contrato
+               tarifa, nombre_estado, numero_contrato, observacion_auditoria
         FROM ilio.v_rueda_segura
         WHERE estrategia = 'Televentas' AND colectivo IN (%(colectivo)s, %(colectivo_anual)s)
           AND supervisor = %(supervisor)s
