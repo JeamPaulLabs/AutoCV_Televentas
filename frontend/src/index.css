@@ -257,3 +257,35 @@ select option:checked { background-color: #00cd93; color: #0a0052; }
 .esqueleto svg rect { fill: rgba(128, 128, 128, 0.3) !important; }
 @keyframes esqueleto-pulso { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .esqueleto { animation: none; opacity: 0.8; } }
+
+/* ---------- Vista del asesor: estados con contraste en ambos temas ---------- */
+:root {
+  --est-pos: #6ee7b7;
+  --est-proc: #fcd34d;
+  --est-canc: #fca5a5;
+}
+html.tema-claro {
+  --est-pos: #007a58;
+  --est-proc: #8a5a00;
+  --est-canc: #b02a2a;
+}
+.est-pos { color: var(--est-pos); }
+.est-proc { color: var(--est-proc); }
+.est-canc { color: var(--est-canc); }
+
+.chip-falta,
+.chip-ok,
+.chip-revision {
+  border: 1px solid color-mix(in srgb, currentColor 40%, transparent);
+  background: color-mix(in srgb, currentColor 14%, transparent);
+}
+.chip-falta { color: var(--est-proc); }
+.chip-ok { color: var(--est-pos); }
+.chip-revision { color: var(--est-canc); }
+
+/* Encabezado y totales fijos de la tabla: fondo opaco para que las filas que
+   pasan por detrás no se mezclen con el texto. */
+.tabla-fija thead th,
+.tabla-fija tfoot td { background: #1a1e3c; }
+html.tema-claro .tabla-fija thead th,
+html.tema-claro .tabla-fija tfoot td { background: #e9ecf5; }

@@ -211,7 +211,7 @@ function PopupContratos({ titulo, items, canceladas, onClose, onRevision }) {
                     <button
                       type="button"
                       onClick={() => onRevision([revision])}
-                      className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-red-900/60 text-red-200 cursor-pointer hover:brightness-125 transition"
+                      className="px-1.5 py-0.5 rounded-full text-[9px] font-bold chip-revision cursor-pointer hover:brightness-125 transition"
                       title="Ver observación de esta cancelada"
                     >
                       📋 revisión
@@ -230,9 +230,9 @@ function PopupContratos({ titulo, items, canceladas, onClose, onRevision }) {
 const COLUMNAS_PRODUCTO = ["CP", "PCV", "RS", "BP"];
 
 const COLUMNAS_ESTADO = [
-  { clave: "positivas", etiqueta: "Positivas", titulo: "Auditada Web + Alta Transaccional", clase: "text-emerald-300", punto: "bg-emerald-400" },
-  { clave: "proceso", etiqueta: "En proceso", titulo: "Digitada Web, aún sin auditar", clase: "text-amber-300", punto: "bg-amber-400" },
-  { clave: "canceladas", etiqueta: "Canceladas", titulo: "Canceladas", clase: "text-red-300", punto: "bg-red-400" },
+  { clave: "positivas", etiqueta: "Positivas", titulo: "Auditada Web + Alta Transaccional", clase: "est-pos", punto: "bg-emerald-400" },
+  { clave: "proceso", etiqueta: "En proceso", titulo: "Digitada Web, aún sin auditar", clase: "est-proc", punto: "bg-amber-400" },
+  { clave: "canceladas", etiqueta: "Canceladas", titulo: "Canceladas", clase: "est-canc", punto: "bg-red-400" },
 ];
 
 function claveEstado(estado) {
@@ -333,7 +333,7 @@ function TablaDesempeno({ ventas, canceladas }) {
   const vacioCelda = <span className="text-white/25">·</span>;
 
   return (
-    <section className="glass rounded-2xl overflow-hidden flex flex-col min-h-0 flex-1" aria-label="Ventas día a día">
+    <section className="glass rounded-2xl overflow-hidden flex flex-col min-h-0" aria-label="Ventas día a día">
       <div className="px-4 py-2 flex items-center justify-between gap-x-4 gap-y-1 flex-wrap border-b border-white/10">
         <h3 className="text-xs uppercase tracking-wide text-white/60 font-semibold">
           Ventas día a día · {filas.length} {filas.length === 1 ? "día" : "días"}
@@ -344,7 +344,7 @@ function TablaDesempeno({ ventas, canceladas }) {
       </div>
 
       <div className="flex-1 min-h-0 overflow-auto">
-        <table className="w-full h-full text-xs xl:text-[13px]">
+        <table className="tabla-fija w-full text-xs xl:text-[13px]">
           <thead className="sticky top-0 z-10">
             <tr className="tabla-header text-white/60">
               <th className="text-left font-semibold px-3 py-1.5">Fecha</th>
@@ -363,7 +363,7 @@ function TablaDesempeno({ ventas, canceladas }) {
               <th className="text-right font-semibold px-3 py-1.5 border-l border-white/15">Total</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className={filas.length > 12 ? "[&_td]:py-1" : "[&_td]:py-2.5"}>
             {filas.map(({ fecha, items, f }) => {
               const nCanc = canceladas.filter((c) => items.some((v) => normContratoJs(v.contrato) === normContratoJs(c.numero_contrato)));
               return (
@@ -382,7 +382,7 @@ function TablaDesempeno({ ventas, canceladas }) {
                         <button
                           type="button"
                           onClick={() => setPopupCanceladas(nCanc)}
-                          className="mr-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-red-900/60 text-red-200 cursor-pointer hover:brightness-125 transition"
+                          className="mr-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold chip-revision cursor-pointer hover:brightness-125 transition"
                           title="Ver revisión de las canceladas de este día"
                         >
                           📋 revisión
@@ -446,7 +446,14 @@ export default function MiResumenAsesor({ resumen, detalleDiaDia, canceladasRevi
   const sinMeta = conMeta && resumen.categoria === "SIN META";
   const color = !conMeta || sinMeta ? WARNING : semaforo(resumen.pct_cumpl_acumulado, resumen.pct_cump_ideal);
   const nPositivas = ventas.filter((v) => ESTADOS_ALTA.includes(v.estado)).length;
+  const nEnProceso = ventas.filter((v) => claveEstado(v.estado) === "proceso").length;
   const conRevision = canceladasRevision || [];
+  const listaCanceladas = ventas
+    .filter((v) => v.estado === "CANCELADA")
+    .map((venta) => ({
+      venta,
+      revision: conRevision.find((c) => normContratoJs(c.numero_contrato) === normContratoJs(venta.contrato)),
+    }));
   // Otrosí vigente: la comisión se habilita desde pct_minimo_comision de la meta
   // individual -- se le ajusta la meta a todo asesor que tenga una.
   const metaAjustada = otrosi && conMeta && !sinMeta && resumen.meta_mes > 0 ? resumen.meta_mes * otrosi.pct_minimo_comision : null;
@@ -459,7 +466,7 @@ export default function MiResumenAsesor({ resumen, detalleDiaDia, canceladasRevi
   // Desde md: columna izquierda (meta + estados) y tabla a la derecha ocupando
   // todo el alto de la ventana. En pantallas angostas todo se apila.
   return (
-    <div className="flex flex-col gap-3 md:flex-row md:h-[calc(100dvh-9rem)] md:min-h-[460px]">
+    <div className="flex flex-col gap-3 md:flex-row md:h-[calc(100dvh-var(--alto-cabecera,9rem))] md:min-h-[460px]">
       <aside className="flex flex-col gap-3 md:w-[19rem] lg:w-[22rem] xl:w-[26rem] shrink-0 md:overflow-y-auto md:min-h-0">
         {conMeta && resumen.observaciones && (
           <div className="rounded-2xl border border-amber-300/40 bg-amber-400/10 px-4 py-2 text-xs text-amber-100">
@@ -482,11 +489,7 @@ export default function MiResumenAsesor({ resumen, detalleDiaDia, canceladasRevi
                   <span className="text-lg font-semibold text-white/60"> / {fmtNumero(metaPrincipal)}</span>
                 </div>
                 <div
-                  className={`mt-2 inline-block text-xs font-bold px-2.5 py-1 rounded-full border ${
-                    faltanPrincipal === 0
-                      ? "bg-emerald-400/15 text-emerald-200 border-emerald-400/40"
-                      : "bg-amber-400/15 text-amber-200 border-amber-400/40"
-                  }`}
+                  className={`mt-2 inline-block text-xs font-bold px-2.5 py-1 rounded-full ${faltanPrincipal === 0 ? "chip-ok" : "chip-falta"}`}
                 >
                   {faltanPrincipal === 0
                     ? "¡Ya alcanzaste tu meta!"
@@ -522,6 +525,55 @@ export default function MiResumenAsesor({ resumen, detalleDiaDia, canceladasRevi
                 </div>
               </>
             )}
+          </section>
+        )}
+
+        {conMeta && !sinMeta && (
+          <div className="grid grid-cols-3 gap-2" aria-label="Resumen de ventas">
+            {[
+              ["Acumulado", resumen.acumulado, "text-white", "Todas las ventas del mes"],
+              ["Positivas", nPositivas, "est-pos", "Auditada Web + Alta Transaccional"],
+              ["En proceso", nEnProceso, "est-proc", "Digitada Web, aún sin auditar"],
+            ].map(([etiqueta, valor, clase, ayuda]) => (
+              <div key={etiqueta} title={ayuda} className="glass rounded-2xl px-3 py-2">
+                <div className="text-[10px] uppercase tracking-wide text-white/60 font-semibold truncate">{etiqueta}</div>
+                <div className={`text-2xl font-extrabold tabular-nums leading-tight ${clase}`}>{fmtNumero(valor)}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {listaCanceladas.length > 0 && (
+          <section className="glass rounded-2xl px-4 py-3" aria-label="Tus canceladas">
+            <div className="text-[11px] uppercase tracking-wide text-white/60 font-semibold mb-2">
+              Tus canceladas · {listaCanceladas.length}
+            </div>
+            <div className="space-y-1.5">
+              {listaCanceladas.map(({ venta, revision }) => {
+                const { corto } = etiquetaProducto(venta.producto);
+                return (
+                  <button
+                    key={`${venta.contrato}-${venta.fecha_venta}`}
+                    type="button"
+                    disabled={!revision}
+                    onClick={() => revision && setPopupRev([revision])}
+                    title={revision ? "Ver el detalle de la revisión" : undefined}
+                    className="w-full text-left rounded-xl border border-white/10 px-3 py-2 transition-colors enabled:hover:bg-white/10 enabled:cursor-pointer disabled:cursor-default"
+                  >
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="font-semibold text-white tabular-nums">{venta.contrato || "—"}</span>
+                      <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${BADGE_PRODUCTO[corto]}`}>{corto}</span>
+                      <span className="text-white/50 ml-auto">{fmtFecha(venta.fecha_venta)}</span>
+                    </div>
+                    <div className="mt-1 text-xs text-white/80 line-clamp-2">
+                      {revision?.observacion || revision?.causal_gestion || (
+                        <span className="text-white/40">Aún sin observación de auditoría</span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </section>
         )}
 

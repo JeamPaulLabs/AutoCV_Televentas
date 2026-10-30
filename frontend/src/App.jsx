@@ -69,6 +69,19 @@ export default function App() {
   const vistaActual = data?.vista ?? modo;
   useEffect(() => guardarPista(data), [data]);
 
+  // La vista del asesor ocupa el alto de la ventana menos el encabezado, que
+  // cambia de alto si se parte en dos líneas: se mide en vez de fijar un valor.
+  useEffect(() => {
+    const cab = document.querySelector(".header-sticky");
+    if (!cab) return undefined;
+    const medir = () =>
+      document.documentElement.style.setProperty("--alto-cabecera", `${cab.offsetHeight + 48}px`);
+    medir();
+    const ro = new ResizeObserver(medir);
+    ro.observe(cab);
+    return () => ro.disconnect();
+  }, []);
+
   function cambiarPeriodo(nuevoPeriodo) {
     setPeriodo(nuevoPeriodo);
     try {
