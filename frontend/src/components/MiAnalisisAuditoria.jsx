@@ -6,6 +6,8 @@
  * qué criterios tiene limpios. Enfocado en retroalimentación, no caso a caso.
  */
 
+import CumplimientoProductos from "./CumplimientoProductos";
+
 const fmt = (n) => Number(n || 0).toLocaleString("es-CO");
 
 function Barra({ etiqueta, total, max, detalle }) {
@@ -40,15 +42,18 @@ function Tarjeta({ titulo, children, derecha }) {
   );
 }
 
-export default function MiAnalisisAuditoria({ analisis, mesNombre, sinRevisiones }) {
+export default function MiAnalisisAuditoria({ analisis, mesNombre, sinRevisiones, productos }) {
   if (sinRevisiones) {
     return (
-      <div className="glass rounded-2xl p-6 text-center space-y-2">
-        <p className="text-lg font-extrabold text-white">Sin cancelaciones auditadas en {mesNombre} 🎉</p>
-        <p className="text-sm text-white/70 max-w-xl mx-auto">
-          Ninguno de tus audios del mes quedó con cancelación en la revisión de auditoría.
-          Sigue aplicando el guion tal como lo vienes haciendo.
-        </p>
+      <div className="space-y-4 max-w-5xl mx-auto">
+        <div className="glass rounded-2xl p-6 text-center space-y-2">
+          <p className="text-lg font-extrabold text-white">Sin cancelaciones auditadas en {mesNombre} 🎉</p>
+          <p className="text-sm text-white/70 max-w-xl mx-auto">
+            Ninguno de tus audios del mes quedó con cancelación en la revisión de auditoría:
+            cumpliste los criterios del guion en todas tus ventas auditadas. Sigue así.
+          </p>
+        </div>
+        <CumplimientoProductos productos={productos} titulo="Tu cumplimiento del guion por producto" />
       </div>
     );
   }
@@ -78,6 +83,11 @@ export default function MiAnalisisAuditoria({ analisis, mesNombre, sinRevisiones
           audio se cuentan aparte porque no dependen de tu gestión, aunque sí afectan la venta.
         </p>
       </div>
+
+      <CumplimientoProductos
+        productos={analisis.productos}
+        titulo="Tu cumplimiento del guion por producto"
+      />
 
       <div className="grid gap-4 md:grid-cols-2">
         <Tarjeta titulo="Dónde se concentraron los hallazgos">

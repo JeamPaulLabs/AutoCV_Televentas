@@ -139,6 +139,89 @@ _CRITERIOS_RE = [(c, re.compile(c["patron"])) for c in CRITERIOS]
 _ASPECTOS_RE = [(a, re.compile(a["patron"])) for a in ASPECTOS]
 
 
+# ---------------------------------------------------------------------------
+# Productos y cumplimiento del guion. Solo CP y PCV tienen guion cargado en
+# context/02_criterios_auditoria/ — BP y RS quedan "pendiente" hasta tenerlo.
+# ---------------------------------------------------------------------------
+PRODUCTOS = [
+    {"id": "CP", "nombre": "Cuota Protegida", "guion": True},
+    {"id": "PCV", "nombre": "Plan Combo Vida", "guion": True},
+    {"id": "BP", "nombre": "Billetera Protegida", "guion": False},
+    {"id": "RS", "nombre": "Rueda Seguro", "guion": False},
+]
+
+
+def producto_corto(producto: str | None) -> str:
+    """Espejo de productoCorto() del frontend (utils/sugerenciasAuditoria.js)."""
+    p = (producto or "").upper()
+    if "BILLETERA" in p:
+        return "BP"
+    if "RUEDA" in p:
+        return "RS"
+    if "COMBO" in p:
+        return "PCV"
+    return "CP"
+
+
+def cumplimiento_productos(filas: list[dict], totales: dict[str, int]) -> list[dict]:
+    """% de cumplimiento del guion por producto y por criterio.
+
+    Premisa (definida por el dueño del proceso): TODA venta del mes pasa por
+    auditoría; la que quedó en alta/auditada sin cancelación cumplió todos los
+    criterios. Por eso el denominador es el total de ventas del producto
+    (`totales`, de ilio) y las fallas salen de las canceladas revisadas.
+    Las fallas técnicas de audio NO restan en el porcentaje (no son
+    incumplimiento del guion); se informan aparte.
+    """
+    por_prod: dict[str, list[dict]] = {}
+    for f in filas:
+        por_prod.setdefault(producto_corto(f.get("producto")), []).append(f)
+
+    out = []
+    for p in PRODUCTOS:
+        lista = por_prod.get(p["id"], [])
+        total = max(int(totales.get(p["id"], 0)), len(lista))
+        if total == 0:
+            continue
+        if not p["guion"]:
+            out.append({
+                "producto": p["id"], "nombre": p["nombre"], "pendiente": True,
+                "total_audios": total, "canceladas_revisadas": len(lista),
+            })
+            continue
+
+        fallas = {c["id"]: {"gestion": 0, "audio": 0} for c in CRITERIOS}
+        con_gestion = 0
+        for f in lista:
+            r = clasificar(f)
+            if r["administrativa"] or r["sin_clasificar"]:
+                continue
+            es_gestion = bool(r["aspectos"])
+            if es_gestion:
+                con_gestion += 1
+            for cid in r["criterios"]:
+                if es_gestion:
+                    fallas[cid]["gestion"] += 1
+                elif r["audio"]:
+                    fallas[cid]["audio"] += 1
+
+        out.append({
+            "producto": p["id"], "nombre": p["nombre"], "pendiente": False,
+            "total_audios": total, "canceladas_revisadas": len(lista),
+            "pct_global": max(0.0, (total - con_gestion) / total),
+            "criterios": [
+                {
+                    "id": c["id"], "nombre": c["nombre"],
+                    "fallas": fallas[c["id"]]["gestion"],
+                    "fallas_audio": fallas[c["id"]]["audio"],
+                    "pct": max(0.0, (total - fallas[c["id"]]["gestion"]) / total),
+                }
+                for c in CRITERIOS
+            ],
+        })
+    return out
+
+
 def texto_revision(fila: dict) -> str:
     """Une los campos de texto libre de una cancelada revisada."""
     partes = [

@@ -330,6 +330,7 @@ export default function App() {
           <MiAnalisisAuditoria
             analisis={analisisAud?.analisis}
             sinRevisiones={Boolean(analisisAud?.sin_revisiones)}
+            productos={analisisAud?.productos}
             mesNombre={mesNombre(periodo)}
           />
         )}

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { obtenerAnalisisCanceladas } from "../../services/comoVamos";
+import CumplimientoProductos from "../CumplimientoProductos";
+import { fmtPct } from "../../utils/formato";
 
 /** Vista general del análisis de auditoría (Martha / Kevin): todo el equipo
  * contra los criterios del guion. Arriba el pulso del mes, al medio dónde se
@@ -43,13 +45,61 @@ function Barras({ items, max, conAudio = false }) {
   );
 }
 
+function ChipsProductos({ productos }) {
+  if (!productos?.length) return null;
+  return (
+    <>
+      {productos.map((p) =>
+        p.pendiente ? (
+          <span key={p.producto} className="rounded-full px-2 py-0.5 border border-white/20 text-white/50 tabular-nums">
+            {p.producto} pendiente
+          </span>
+        ) : (
+          <span
+            key={p.producto}
+            className={`rounded-full px-2 py-0.5 border tabular-nums ${
+              p.pct_global >= 0.95
+                ? "border-xuma-green-dark/60 text-xuma-green-dark"
+                : p.pct_global >= 0.85
+                ? "border-amber-300/50 text-amber-300"
+                : "border-red-300/60 text-red-300"
+            }`}
+            title={`${p.nombre}: cumplimiento del guion sobre ${fmt(p.total_audios)} ventas auditadas`}
+          >
+            {p.producto} {fmtPct(p.pct_global)}
+          </span>
+        )
+      )}
+    </>
+  );
+}
+
 function FilaAsesor({ a }) {
   const maxCrit = Math.max(...a.criterios.map((c) => c.total), 1);
+  if (a.total_revisadas === 0) {
+    return (
+      <details className="rounded-xl border border-white/10 open:bg-white/5 transition-colors">
+        <summary className="cursor-pointer px-3 py-2 flex items-center justify-between gap-3 text-sm text-white">
+          <span className="font-semibold truncate">{a.asesor}</span>
+          <span className="flex items-center gap-2 flex-none text-[11px] flex-wrap justify-end">
+            <span className="rounded-full px-2 py-0.5 border border-xuma-green-dark/60 text-xuma-green-dark">
+              ✓ sin canceladas auditadas
+            </span>
+            <ChipsProductos productos={a.productos} />
+          </span>
+        </summary>
+        <p className="px-3 pb-3 pt-1 text-xs text-white/75">
+          Ninguna de sus ventas del mes quedó con cancelación en la revisión: cumplió los criterios
+          del guion en todas sus ventas auditadas.
+        </p>
+      </details>
+    );
+  }
   return (
     <details className="rounded-xl border border-white/10 open:bg-white/5 transition-colors">
       <summary className="cursor-pointer px-3 py-2 flex items-center justify-between gap-3 text-sm text-white">
         <span className="font-semibold truncate">{a.asesor}</span>
-        <span className="flex items-center gap-2 flex-none text-[11px]">
+        <span className="flex items-center gap-2 flex-none text-[11px] flex-wrap justify-end">
           <span className="rounded-full px-2 py-0.5 bg-white/10 text-white/85 tabular-nums">
             {fmt(a.total_revisadas)} audio{a.total_revisadas === 1 ? "" : "s"}
           </span>
@@ -59,6 +109,7 @@ function FilaAsesor({ a }) {
           <span className="rounded-full px-2 py-0.5 border border-amber-300/50 text-amber-300 tabular-nums">
             {fmt(Math.max(a.con_gestion, 0))} gestión
           </span>
+          <ChipsProductos productos={a.productos} />
         </span>
       </summary>
       <div className="px-3 pb-3 pt-1 grid gap-4 md:grid-cols-2">
@@ -159,6 +210,11 @@ export default function AnalisisEquipoAuditoria({ periodo }) {
         <Kpi etiqueta="Con falla técnica de audio" valor={eq.fallas_audio} acento="text-sky-200" />
         <Kpi etiqueta="Con hallazgo de gestión" valor={conGestion} acento="text-amber-300" />
       </div>
+
+      <CumplimientoProductos
+        productos={eq.productos}
+        titulo="Cumplimiento del guion por producto · equipo"
+      />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="glass rounded-2xl p-4 space-y-3">

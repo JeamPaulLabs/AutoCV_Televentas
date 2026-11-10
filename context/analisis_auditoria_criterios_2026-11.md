@@ -50,6 +50,28 @@ Validado contra octubre: 362/362 filas clasificadas (0 sin clasificar).
   `VistaEquipo.jsx`, servicio en `services/comoVamos.js`, overrides de
   contraste tema claro para tonos sky/amber en `index.css`.
 
+## Cumplimiento porcentual por producto (agregado en la misma sesión)
+
+Además del análisis de hallazgos, cada vista muestra **% de cumplimiento del
+guion por producto y por criterio**:
+
+- **Premisa definida por el dueño del proceso**: toda venta del mes pasa por
+  auditoría; la que quedó en alta/auditada sin cancelación cumplió todos los
+  criterios. Denominador = total de ventas del producto en el mes
+  (`leer_televentas`, respeta cierres de mes y exclusiones); fallas = canceladas
+  revisadas con hallazgo de gestión en ese criterio.
+- Las **fallas técnicas de audio no restan** en el porcentaje (no son
+  incumplimiento del asesor); se informan aparte ("solo audio").
+- Solo **Cuota Protegida y Plan Combo Vida** tienen guion cargado; Billetera
+  Protegida y Rueda Seguro salen como "guion pendiente de cargar" hasta tenerlo.
+- Los asesores **sin canceladas revisadas** también aparecen en la vista de
+  equipo (✓ 100% en sus productos) — que les fue bien también se ve.
+- Octubre (validación): CP 93,3% global (1.084 ventas, 231 revisadas),
+  PCV 93,3% (432 ventas, 76 revisadas); BP 21 y RS 34 revisadas pendientes.
+- Piezas: `cumplimiento_productos()` y `producto_corto()` en
+  `analisis_criterios.py`; `_ventas_por_asesor()` en el router;
+  `CumplimientoProductos.jsx` compartido entre la vista personal y la de equipo.
+
 ## Pendiente
 
 - Revisión visual en navegador con sesión real (ambos temas, móvil) antes de
