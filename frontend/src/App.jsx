@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
 import { useDashboardCache } from "./hooks/useDashboardCache";
-import { solicitarActualizacionIlio, estadoActualizacionIlio } from "./services/comoVamos";
+import {
+  solicitarActualizacionIlio,
+  estadoActualizacionIlio,
+  obtenerAnalisisCanceladas,
+} from "./services/comoVamos";
 import { useTema } from "./hooks/useTema";
 import logoClaro from "./assets/logo-claro.png";
 import logoOscuro from "./assets/logo-oscuro.png";
 import Esqueleto, { guardarPista } from "./components/Esqueleto";
 import MiResumenAsesor from "./components/MiResumenAsesor";
+import MiAnalisisAuditoria from "./components/MiAnalisisAuditoria";
 import OtrosiAyuda from "./components/OtrosiAyuda";
 import VistaEquipo from "./components/admin/VistaEquipo";
 
@@ -71,6 +76,27 @@ export default function App() {
   // sin asesor vinculado pide "personal" y recibe "equipo").
   const vistaActual = data?.vista ?? modo;
   useEffect(() => guardarPista(data), [data]);
+
+  // Pestaña "Mi auditoría" de la vista personal: análisis del mes de todos los
+  // audios auditados con cancelación. Se consulta por periodo; si el mes aún no
+  // tiene revisión cargada (p. ej. noviembre recién empezado) la pestaña queda
+  // deshabilitada. Para quien audita (Martha/Kevin) el backend devuelve la
+  // vista de equipo: su análisis vive en "Vista equipo", no aquí.
+  const [pestanaPersonal, setPestanaPersonal] = useState("operacion");
+  const [analisisAud, setAnalisisAud] = useState(null);
+  useEffect(() => {
+    setPestanaPersonal("operacion");
+    setAnalisisAud(null);
+    if (data?.vista !== "personal") return undefined;
+    let vivo = true;
+    obtenerAnalisisCanceladas(periodo)
+      .then((d) => vivo && setAnalisisAud(d))
+      .catch(() => vivo && setAnalisisAud({ disponible: false, error: true }));
+    return () => { vivo = false; };
+  }, [periodo, data?.vista]);
+  const auditoriaDisponible = Boolean(
+    analisisAud?.disponible && analisisAud?.vista === "personal"
+  );
 
   // La vista del asesor ocupa el alto de la ventana menos el encabezado, que
   // cambia de alto si se parte en dos líneas: se mide en vez de fijar un valor.
@@ -199,6 +225,44 @@ export default function App() {
             </button>
           ))}
         </div>
+        {vistaActual === "personal" && analisisAud?.vista === "personal" && (
+          <div className="glass rounded-full p-1 flex gap-1" role="tablist" aria-label="Pestañas de mi vista">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={pestanaPersonal === "operacion"}
+              onClick={() => setPestanaPersonal("operacion")}
+              className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors duration-200 ${
+                pestanaPersonal === "operacion"
+                  ? "bg-xuma-green-dark text-xuma-bg-dark"
+                  : "text-white/60 hover:text-white/90"
+              }`}
+            >
+              Mi operación
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={pestanaPersonal === "auditoria"}
+              disabled={!auditoriaDisponible}
+              onClick={() => auditoriaDisponible && setPestanaPersonal("auditoria")}
+              title={
+                auditoriaDisponible
+                  ? "Análisis de tus audios auditados del mes"
+                  : "Se activa cuando auditoría interna carga la revisión del mes"
+              }
+              className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors duration-200 ${
+                pestanaPersonal === "auditoria"
+                  ? "bg-xuma-green-dark text-xuma-bg-dark"
+                  : auditoriaDisponible
+                  ? "text-white/60 hover:text-white/90"
+                  : "text-white/30 cursor-not-allowed"
+              }`}
+            >
+              Mi auditoría
+            </button>
+          </div>
+        )}
         {data?.puede_ver_equipo && (
           <div className="glass rounded-full p-1 flex gap-1">
             <button
@@ -252,13 +316,21 @@ export default function App() {
           </div>
         )}
 
-        {!loading && data?.vista === "personal" && (
+        {!loading && data?.vista === "personal" && pestanaPersonal !== "auditoria" && (
           <MiResumenAsesor
             resumen={data.resumen}
             detalleDiaDia={data.detalle_dia_dia}
             billetera={data.billetera}
             canceladasRevision={data.canceladas_revision}
             otrosi={data.otrosi}
+          />
+        )}
+
+        {!loading && data?.vista === "personal" && pestanaPersonal === "auditoria" && (
+          <MiAnalisisAuditoria
+            analisis={analisisAud?.analisis}
+            sinRevisiones={Boolean(analisisAud?.sin_revisiones)}
+            mesNombre={mesNombre(periodo)}
           />
         )}
 

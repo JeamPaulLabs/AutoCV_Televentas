@@ -17,7 +17,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from .routers import auditoria, como_vamos
+from .routers import analisis_canceladas, auditoria, como_vamos
 
 app = FastAPI(title="Como Vamos Televentas API")
 
@@ -57,6 +57,7 @@ async def sin_cache_obsoleto(request: Request, call_next):
 
 app.include_router(como_vamos.router, prefix="/api/como-vamos", tags=["como-vamos"])
 app.include_router(auditoria.router, prefix="/api/como-vamos", tags=["auditoria"])
+app.include_router(analisis_canceladas.router, prefix="/api/como-vamos", tags=["analisis-canceladas"])
 
 
 @app.get("/api/health")

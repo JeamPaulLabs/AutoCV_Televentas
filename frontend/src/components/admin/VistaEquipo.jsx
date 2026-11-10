@@ -7,6 +7,7 @@ import TablaFacturacion from "../TablaFacturacion";
 import AvanceEquipo from "./AvanceEquipo";
 import ReporteResumen from "./ReporteResumen";
 import VistaAuditoria from "./VistaAuditoria";
+import AnalisisEquipoAuditoria from "./AnalisisEquipoAuditoria";
 import SeccionTitulo from "./SeccionTitulo";
 
 /** Avisos de datos: una pastilla llamativa en la fila de pestañas (no ocupa
@@ -106,6 +107,14 @@ export default function VistaEquipo({ data, tema }) {
           { id: "detalle", label: "Detalle por vendedor", content: <Detalle data={data} /> },
           // Auditoría por asesor: coordinación comercial (Martha) y auditoría interna (Kevin).
           ...(data.puede_auditar ? [{ id: "auditoria", label: "Auditoría", content: <VistaAuditoria data={data} /> }] : []),
+          // Análisis del mes: todas las canceladas revisadas clasificadas por criterio del guion.
+          ...(data.puede_auditar
+            ? [{
+                id: "analisis",
+                label: "Análisis auditoría",
+                content: <AnalisisEquipoAuditoria periodo={data.periodo.slice(0, 7)} />,
+              }]
+            : []),
         ]}
       />
       <Avisos avisos={data.avisos} />

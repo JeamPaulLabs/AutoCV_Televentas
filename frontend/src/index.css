@@ -160,6 +160,13 @@ html.tema-claro .text-xuma-green-dark { color: #007a58; }
 html.tema-claro .text-amber-100 { color: #6b4300; }
 html.tema-claro .text-amber-300\/80 { color: #8a5a00; }
 html.tema-claro .text-red-300 { color: #b02a2a; }
+html.tema-claro .text-amber-300 { color: #8a5a00; }
+html.tema-claro .border-amber-300\/50 { border-color: rgb(138 90 0 / 0.5); }
+/* Tonos "sky" (fallas técnicas de audio en el análisis de auditoría): sobre
+   vidrio claro el sky-200/300 de Tailwind no pasa AA — se oscurecen. */
+html.tema-claro .text-sky-200,
+html.tema-claro .text-sky-300 { color: #1d55c8; }
+html.tema-claro .border-sky-300\/50 { border-color: rgb(29 85 200 / 0.5); }
 html.tema-claro .bg-black\/60 { background: rgb(13 16 36 / 0.45); }
 
 /* ---------- Captura de imagen (descargar / WhatsApp) ----------

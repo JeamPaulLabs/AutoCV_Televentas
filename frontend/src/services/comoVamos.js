@@ -27,6 +27,14 @@ export function guardarSeguimiento(cuerpo) {
   return apiPost("/api/como-vamos/auditorias/seguimiento", cuerpo);
 }
 
+/** Análisis de auditoría del mes (canceladas revisadas clasificadas por
+ * criterio del guion). El backend decide la vista: personal (solo lo propio)
+ * o equipo (Martha / Kevin). `periodo` es YYYY-MM. */
+export function obtenerAnalisisCanceladas(periodo) {
+  const params = new URLSearchParams({ periodo });
+  return apiGet(`/api/como-vamos/analisis-canceladas?${params.toString()}`);
+}
+
 /** Solicita la actualizacion de Ilio (encola la solicitud; el job lo ejecuta un
  * proceso en el host). Devuelve { solicitud, creada }. */
 export function solicitarActualizacionIlio() {
