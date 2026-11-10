@@ -142,6 +142,11 @@ function FilaAsesor({ a }) {
                 <li key={r.tema}>
                   <span className="font-semibold text-white">{r.tema}</span>
                   <span className="text-white/50"> ({fmt(r.casos)})</span>: {r.texto}
+                  {r.evidencias?.length > 0 && (
+                    <span className="block text-[11px] text-white/55 italic border-l-2 border-white/15 pl-2 mt-0.5 ml-4">
+                      De sus audios: «{r.evidencias[0]}»
+                    </span>
+                  )}
                 </li>
               ))}
             </ol>

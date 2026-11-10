@@ -132,8 +132,17 @@ export default function MiAnalisisAuditoria({ analisis, mesNombre, sinRevisiones
                   </span>
                   <div>
                     <span className="font-semibold text-white">{r.tema}</span>
-                    <span className="text-white/50"> · {fmt(r.casos)} caso{r.casos === 1 ? "" : "s"}</span>
+                    <span className="text-white/50"> · {fmt(r.casos)} caso{r.casos === 1 ? "" : "s"} en tus audios</span>
                     <p className="text-white/80 mt-0.5">{r.texto}</p>
+                    {r.evidencias?.length > 0 && (
+                      <ul className="mt-1 space-y-0.5">
+                        {r.evidencias.map((e) => (
+                          <li key={e} className="text-[11px] text-white/55 italic border-l-2 border-white/15 pl-2">
+                            De tus audios: «{e}»
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </li>
               ))}

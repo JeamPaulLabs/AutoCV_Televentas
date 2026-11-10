@@ -254,14 +254,38 @@ def clasificar(fila: dict) -> dict:
     }
 
 
+def _fragmento(texto: str, rx) -> str | None:
+    """Tramo corto del texto ORIGINAL del auditor donde cayó el hallazgo,
+    para que la recomendación cite lo que de verdad pasó en sus audios."""
+    for frag in re.split(r"(?<=[.;])\s+|\.\.\.+|…", texto or ""):
+        f = frag.strip(" .;-")
+        if len(f) < 25:
+            continue
+        if rx.search(_norm(f)):
+            return (f[:177] + "…") if len(f) > 180 else f
+    return None
+
+
 def analizar_asesor(filas: list[dict]) -> dict:
     """Resumen de mejora de UN asesor a partir de sus canceladas revisadas."""
     por_criterio: dict[str, dict] = {}
     por_aspecto: dict[str, int] = {}
+    evidencias: dict[str, list[str]] = {}
     audio_total = 0
     solo_audio = 0
     administrativas = 0
     sin_clasificar = 0
+
+    def _guardar_evidencia(clave: str, texto: str, rx) -> None:
+        lista = evidencias.setdefault(clave, [])
+        if len(lista) >= 2:
+            return
+        frag = _fragmento(texto, rx)
+        if frag and frag not in lista:
+            lista.append(frag)
+
+    rx_asp = {a["id"]: rx for a, rx in _ASPECTOS_RE}
+    rx_crit = {c["id"]: rx for c, rx in _CRITERIOS_RE}
 
     for f in filas:
         r = clasificar(f)
@@ -271,10 +295,12 @@ def analizar_asesor(filas: list[dict]) -> dict:
         if r["sin_clasificar"]:
             sin_clasificar += 1
             continue
+        texto = texto_revision(f)
         if r["audio"]:
             audio_total += 1
             if not r["aspectos"]:
                 solo_audio += 1
+            _guardar_evidencia("audio", texto, PATRON_AUDIO)
         for cid in r["criterios"]:
             d = por_criterio.setdefault(cid, {"total": 0, "con_audio": 0, "con_gestion": 0})
             d["total"] += 1
@@ -282,8 +308,10 @@ def analizar_asesor(filas: list[dict]) -> dict:
                 d["con_audio"] += 1
             if r["aspectos"]:
                 d["con_gestion"] += 1
+                _guardar_evidencia(f"c:{cid}", texto, rx_crit[cid])
         for aid in r["aspectos"]:
             por_aspecto[aid] = por_aspecto.get(aid, 0) + 1
+            _guardar_evidencia(f"a:{aid}", texto, rx_asp[aid])
 
     nombres_c = {c["id"]: c for c in CRITERIOS}
     nombres_a = {a["id"]: a for a in ASPECTOS}
@@ -304,7 +332,12 @@ def analizar_asesor(filas: list[dict]) -> dict:
     # controla), luego los criterios donde más se concentran sus hallazgos
     # NO explicados solo por audio.
     recomendaciones = [
-        {"tema": nombres_a[a["id"]]["nombre"], "texto": nombres_a[a["id"]]["recomendacion"], "casos": a["total"]}
+        {
+            "tema": nombres_a[a["id"]]["nombre"],
+            "texto": nombres_a[a["id"]]["recomendacion"],
+            "casos": a["total"],
+            "evidencias": evidencias.get(f"a:{a['id']}", []),
+        }
         for a in aspectos
     ]
     for c in criterios:
@@ -313,8 +346,27 @@ def analizar_asesor(filas: list[dict]) -> dict:
                 "tema": nombres_c[c["id"]]["nombre"],
                 "texto": nombres_c[c["id"]]["recomendacion"],
                 "casos": c["total"],
+                "evidencias": evidencias.get(f"c:{c['id']}", []),
             })
     recomendaciones = recomendaciones[:6]
+
+    # Las fluctuaciones de audio también se analizan: no son incumplimiento del
+    # guion, pero afectan la venta — se dice DÓNDE se concentraron las suyas y
+    # qué hacer. Va aparte del tope de 6 para no desplazar lo de gestión.
+    if audio_total > 0:
+        tramos = sorted(criterios, key=lambda c: -c["con_audio"])
+        tramos = [c["nombre"] for c in tramos if c["con_audio"] > 0][:3]
+        donde = f" En tus audios se concentraron en: {', '.join(tramos)}." if tramos else ""
+        recomendaciones.append({
+            "tema": "Calidad técnica del audio",
+            "texto": (
+                "Revisa diadema, micrófono y conexión antes de iniciar la jornada; si una frase "
+                "clave se entrecorta o fluctúa, repítela completa — las cláusulas textuales y los "
+                "valores deben quedar audibles de inicio a fin." + donde
+            ),
+            "casos": audio_total,
+            "evidencias": evidencias.get("audio", []),
+        })
 
     con_hallazgo = {c["id"] for c in criterios}
     fortalezas = [c["nombre"] for c in CRITERIOS if c["id"] not in con_hallazgo]
