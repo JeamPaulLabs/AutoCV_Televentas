@@ -445,6 +445,7 @@ export default function MiResumenAsesor({ resumen, detalleDiaDia, canceladasRevi
   const ventas = detalleDiaDia || [];
   const [popupEstado, setPopupEstado] = useState(null);
   const [popupRev, setPopupRev] = useState(null);
+  const [canceladasAbiertas, setCanceladasAbiertas] = useState(false);
 
   if (!resumen && ventas.length === 0) {
     return (
@@ -557,10 +558,18 @@ export default function MiResumenAsesor({ resumen, detalleDiaDia, canceladasRevi
 
         {listaCanceladas.length > 0 && (
           <section className="glass rounded-2xl px-4 py-3" aria-label="Tus canceladas">
-            <div className="text-[11px] uppercase tracking-wide text-white/60 font-semibold mb-2">
-              Tus canceladas · {listaCanceladas.length}
-            </div>
-            <div className="space-y-1.5">
+            <button
+              type="button"
+              onClick={() => setCanceladasAbiertas((a) => !a)}
+              aria-expanded={canceladasAbiertas}
+              aria-controls="tus-canceladas-lista"
+              className="w-full flex items-center justify-between text-[11px] uppercase tracking-wide text-white/60 font-semibold cursor-pointer"
+            >
+              <span>Tus canceladas · {listaCanceladas.length}</span>
+              <span className={`text-white/50 transition-transform ${canceladasAbiertas ? "rotate-180" : ""}`} aria-hidden="true">▾</span>
+            </button>
+            {canceladasAbiertas && (
+            <div id="tus-canceladas-lista" className="space-y-1.5 mt-2">
               {listaCanceladas.map(({ venta, revision }) => {
                 const { corto } = etiquetaProducto(venta.producto);
                 return (
@@ -586,6 +595,7 @@ export default function MiResumenAsesor({ resumen, detalleDiaDia, canceladasRevi
                 );
               })}
             </div>
+            )}
           </section>
         )}
 
