@@ -27,3 +27,24 @@ periodos:
         texto: "Aplica únicamente a la liquidación de octubre de 2026. Desde el mes siguiente rige el esquema principal, salvo modificación formal posterior."
       - titulo: "Cancelaciones por fluctuación de audio"
         texto: "Las ventas canceladas por fluctuaciones o fallas de audio atribuibles a la operación se reconocen y pagan al asesor, siempre que se valide que la venta fue gestionada y que la cancelación obedeció a esa novedad técnica. También cuentan en la ejecución del asesor y en el resultado del equipo."
+  "2026-11":
+    otrosi_activo: true
+    meta_equipo_altas_positivas: 1600
+    pct_minimo_comision: 0.70
+    fecha_documento: "2026-11-21"
+    documento: "Otrosí, esquema de comisión noviembre 2026"
+    reglas:
+      - titulo: "Condición especial de comisionamiento"
+        texto: "Para el periodo correspondiente al mes de noviembre de 2026, se habilitará el pago de comisión a partir del setenta por ciento (70%) de cumplimiento de la meta individual establecida para cada asesor, siempre y cuando el equipo de Televentas alcance un mínimo de mil seiscientas (1.600) altas positivas durante el periodo. La condición de las 1.600 altas positivas será una medición general del equipo, por lo cual no se realizará una validación individual para determinar el cumplimiento de este requisito."
+      - titulo: "Definición de altas positivas"
+        texto: "Para efectos del presente otrosí, las 1.600 altas positivas serán calculadas sobre el total general de ventas positivas generadas por el equipo de Televentas durante noviembre de 2026, independientemente del producto o de la meta individual asignada a cada asesor. Para esta condición especial no será aplicable el requisito de las 25 ventas de productos voluntarios por asesor. En consecuencia, para determinar el cumplimiento de esta condición general del equipo únicamente se tendrá en cuenta el resultado consolidado de altas positivas."
+      - titulo: "Alcance de la condición"
+        texto: "El cumplimiento del mínimo de 1.600 altas positivas constituye una condición general para habilitar la aplicación del presente otrosí. Una vez cumplida dicha condición, cada integrante podrá acceder al pago de comisión de acuerdo con su porcentaje individual de cumplimiento, conforme al esquema de comisiones correspondiente a su cargo. La medición del 70% de cumplimiento será individual, mientras que la condición de las 1.600 altas positivas será general para todo el equipo."
+      - titulo: "Incumplimiento de la meta general"
+        texto: "En caso de que el equipo de Televentas no alcance las 1.600 altas positivas al cierre del mes de noviembre, la condición especial establecida en el presente otrosí no será aplicable. En consecuencia, la liquidación de comisiones correspondientes al mes de noviembre de 2026 se realizará bajo las condiciones establecidas en el esquema de comisiones principal vigente, incluyendo los porcentajes mínimos de cumplimiento y demás requisitos obligatorios."
+      - titulo: "Vigencia"
+        texto: "Las condiciones establecidas en el presente otrosí aplicarán única y exclusivamente para la liquidación correspondiente al mes de noviembre de 2026. A partir del mes siguiente, continuará vigente el esquema de comisiones principal vigente, salvo que se establezca formalmente una modificación posterior."
+      - titulo: "Ratificación de las demás condiciones"
+        texto: "Las demás disposiciones, términos, condiciones, políticas y criterios establecidos en el esquema de comisiones principal que no sean modificados expresamente mediante el presente otrosí se mantienen vigentes y de obligatorio cumplimiento. El presente documento modifica únicamente las condiciones expresamente señaladas en este otrosí."
+      - titulo: "Cancelaciones por fluctuación de audio"
+        texto: "Para el mes de noviembre de 2026, las ventas que sean canceladas como consecuencia de fluctuaciones o fallas de audio atribuibles a la operación serán reconocidas y pagadas al asesor, siempre que se pueda validar que la venta fue realizada, que fue efectivamente gestionada y que la cancelación obedeció a dicha novedad técnica. Estas ventas también serán contabilizadas dentro de la ejecución comercial del asesor y del resultado general del equipo para efectos del cumplimiento de las metas establecidas en el presente otrosí."
